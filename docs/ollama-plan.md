@@ -60,17 +60,17 @@ This means:
 4. The response is displayed in the game UI.
 5. The player analyses and responds to the message.
 
-### Optional Preprocessing / Fallback
+### Optional Future Fallback
 
-If runtime latency becomes too slow, the game may include a small fallback list of prewritten messages.
+If runtime latency becomes too slow in a later version, the game could include a small fallback list of prewritten messages.
 
-This fallback will only be used if:
+This is not the main submitted behaviour. The submitted version is intended to demonstrate live Ollama generation. A fallback would only be appropriate if:
 
 - Ollama is not running
 - The model times out
 - A response fails validation
 
-The main submitted version should still clearly demonstrate live Ollama generation.
+For the current prototype, failures are surfaced through the UI and the player can retry generation.
 
 ## 6. Data Flow
 
@@ -99,7 +99,7 @@ Response is cleaned / validated
 Intercept message appears in UI
   |
   v
-Player classifies origin and chooses action
+Player chooses one of three generated replies
   |
   v
 Game evaluates decision
@@ -124,7 +124,7 @@ Expected request fields:
 - `prompt`: the structured prompt for the next intercepted message
 - `stream`: `false`, so Unity receives one complete response
 
-The first implementation should keep the request simple and readable before adding more advanced options.
+The implementation keeps the request readable and uses labelled prompt output so Unity can parse scenario, intercept, reply, outcome, and final report responses.
 
 ## 8. Prompt System
 
@@ -159,7 +159,7 @@ Validation should check:
 - The response does not contain obvious labels such as "friendly", "enemy", or "deception".
 - The response does not include unwanted explanation around the message.
 
-If validation fails, the game should either retry once or use a fallback message.
+If validation fails, the game retries with a stricter retry prompt or asks the player to generate again.
 
 ## 10. Gameplay Evaluation
 
@@ -186,7 +186,7 @@ The prototype should handle common Ollama issues clearly:
 - Request timeout
 - Invalid or empty model response
 
-If a failure occurs, the UI should show a clear message and allow the player to continue with a fallback intercept.
+If a failure occurs, the UI shows a clear message so the player can resolve the Ollama issue or retry generation.
 
 ## 12. Reproducibility Notes
 

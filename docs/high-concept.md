@@ -39,16 +39,17 @@ The player acts as an Intelligence Officer responsible for:
 2. Analysis Phase
    - The player interprets tone, language, and context clues.
 3. Decision Phase
-   - The player selects a classification: Friendly, Enemy, or Uncertain.
-   - The player selects a response action, such as Ignore, Respond, or Escalate.
-4. Confidence Rating
-   - The player assigns a confidence level to their decision.
-5. Outcome Resolution
+   - The player selects one of three generated reply options.
+   - Each reply represents a different interpretation and response action.
+4. Outcome Resolution
    - The system evaluates the decision and provides feedback.
    - Correct interpretation rewards progression.
    - Incorrect interpretation creates penalties or escalation.
-6. Next Transmission
+5. Mission Log
+   - The consequence is recorded and affects the next round.
+6. Next Transmission / Final Report
    - The loop repeats with new AI-generated content.
+   - After five rounds, the system generates a final mission report.
 
 ## 5. Role of the LLM
 
@@ -108,7 +109,8 @@ To maintain a focused and achievable project, the prototype will use:
 - Text-based interface as the primary interaction style
 - Single core gameplay loop
 - One LLM model through Ollama
-- Limited but polished interaction set
+- Five-round scenario structure
+- Generated replies, outcomes, and final report
 
 This keeps the project stable, technically focused, and achievable within the assessment scope.
 

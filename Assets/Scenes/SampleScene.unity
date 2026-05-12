@@ -396,5 +396,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: ""
   ollamaEndpoint: http://localhost:11434/api/generate
   modelName: llama3.1:8b
-  requestTimeoutSeconds: 30
+  requestTimeoutSeconds: 120
   initialTransmissionText: Awaiting intercept...
