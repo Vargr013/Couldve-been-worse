@@ -428,3 +428,5 @@ Important: The previous final report failed validation. Return only 3 concise fi
 - Hidden intent is described indirectly so the model can shape the message without revealing the answer.
 - Real-world reference restrictions were added to keep the game fictional and ethically safer.
 - Retry prompts were added because local model responses can be inconsistent.
+- Prompt text was later condensed after local timeout testing. The current prompts favour compact state lines over long instructional paragraphs.
+- Text polish is the next planned sprint, so the archive records structure and control rather than claiming the current prose is final.

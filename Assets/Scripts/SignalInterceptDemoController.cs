@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,9 +12,30 @@ using UnityEngine.UI;
 
 public sealed class SignalInterceptDemoController : MonoBehaviour
 {
+    [Header("Ollama")]
     [SerializeField] private string ollamaEndpoint = "http://localhost:11434/api/generate";
     [SerializeField] private string modelName = "llama3.1:8b";
     [SerializeField] private int requestTimeoutSeconds = 120;
+
+    [Header("Inspector Visual Direction")]
+    [SerializeField] private bool useGeneratedArtAssets = true;
+    [SerializeField] private bool loadGeneratedArtFromDisk = true;
+    [SerializeField] private bool showProceduralPanelLabels = false;
+    [SerializeField] private bool showProceduralScanlines = false;
+    [SerializeField] private bool showProceduralOutlines = false;
+    [SerializeField] private bool showStampFlashes = false;
+    [SerializeField] private bool showSignalPings = false;
+    [SerializeField, Range(0f, 1f)] private float supervisorAccentOpacity = 0.12f;
+
+    [Header("Editable Art Sprites")]
+    [SerializeField] private Sprite inspectorBackgroundSprite = null;
+    [SerializeField] private Sprite inspectorBriefingPanelSprite = null;
+    [SerializeField] private Sprite inspectorInterceptPanelSprite = null;
+    [SerializeField] private Sprite inspectorMissionLogPanelSprite = null;
+    [SerializeField] private Sprite inspectorDecisionPanelSprite = null;
+    [SerializeField] private Sprite inspectorSupervisorSprite = null;
+    [SerializeField] private Sprite[] inspectorReplyButtonSprites = Array.Empty<Sprite>();
+    [SerializeField] private Sprite[] inspectorClueChipSprites = Array.Empty<Sprite>();
 
     private enum DeskTab
     {
@@ -92,6 +114,13 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private RectTransform pingLayer;
     private TypewriterTextEffect typewriterEffect;
     private UiJuice uiJuice;
+    private Sprite backgroundSprite;
+    private Sprite briefingPanelSprite;
+    private Sprite interceptPanelSprite;
+    private Sprite logPanelSprite;
+    private Sprite[] replyButtonSprites = Array.Empty<Sprite>();
+    private Sprite[] clueChipSprites = Array.Empty<Sprite>();
+    private Sprite supervisorSprite;
     private GeneratedReplyOption[] currentReplyOptions = Array.Empty<GeneratedReplyOption>();
     private CancellationTokenSource requestCancellation;
     private DeskTab activeTab;
@@ -102,6 +131,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private void Awake()
     {
         requestTimeoutSeconds = Mathf.Max(requestTimeoutSeconds, 120);
+        LoadGeneratedArtAssets();
         BuildInterface();
         StartMission();
     }
@@ -131,6 +161,75 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         ShowTab(DeskTab.Briefing);
         RefreshStats();
         GenerateScenario();
+    }
+
+    private void LoadGeneratedArtAssets()
+    {
+        if (!useGeneratedArtAssets)
+        {
+            return;
+        }
+
+        backgroundSprite = inspectorBackgroundSprite;
+        briefingPanelSprite = inspectorBriefingPanelSprite;
+        interceptPanelSprite = inspectorInterceptPanelSprite;
+        logPanelSprite = inspectorMissionLogPanelSprite;
+        supervisorSprite = inspectorSupervisorSprite;
+        replyButtonSprites = inspectorReplyButtonSprites ?? Array.Empty<Sprite>();
+        clueChipSprites = inspectorClueChipSprites ?? Array.Empty<Sprite>();
+
+        if (!loadGeneratedArtFromDisk)
+        {
+            return;
+        }
+
+        backgroundSprite ??= LoadSpriteFromAssets("Images/Cleaned/Main Background.png");
+        briefingPanelSprite ??= LoadSpriteFromAssets("Images/Cleaned/Situation Board Panel Cropped.png");
+        interceptPanelSprite ??= LoadSpriteFromAssets("Images/Cleaned/Intercept Terminal Panel Cropped.png");
+        logPanelSprite ??= LoadSpriteFromAssets("Images/Cleaned/Mission Log Paper Panel Cropped.png");
+        supervisorSprite ??= LoadSpriteFromAssets("Images/Cleaned/Supervisor Presence Icon Cropped.png");
+
+        if (replyButtonSprites.Length == 0)
+        {
+            replyButtonSprites = LoadSpriteSet("Images/Cleaned/Sliced", "Reply_Button_Set_", 3);
+        }
+
+        if (clueChipSprites.Length == 0)
+        {
+            clueChipSprites = LoadSpriteSet("Images/Cleaned/Sliced", "Evidence_Clue_Chips_", 6);
+        }
+    }
+
+    private static Sprite[] LoadSpriteSet(string folder, string prefix, int count)
+    {
+        var sprites = new Sprite[count];
+        for (int i = 0; i < count; i++)
+        {
+            sprites[i] = LoadSpriteFromAssets($"{folder}/{prefix}{i + 1:00}.png");
+        }
+
+        return sprites;
+    }
+
+    private static Sprite LoadSpriteFromAssets(string relativeAssetPath)
+    {
+        string path = Path.Combine(Application.dataPath, relativeAssetPath.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(path))
+        {
+            Debug.LogWarning("Visual asset not found: " + path);
+            return null;
+        }
+
+        byte[] data = File.ReadAllBytes(path);
+        var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!texture.LoadImage(data))
+        {
+            Debug.LogWarning("Visual asset could not be loaded: " + path);
+            return null;
+        }
+
+        texture.name = Path.GetFileNameWithoutExtension(path);
+        return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
     }
 
     private void HandlePrimaryAction()
@@ -897,6 +996,11 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private void FlashStamp(string label, Color color)
     {
+        if (!showStampFlashes)
+        {
+            return;
+        }
+
         if (stampText == null || stampGroup == null)
         {
             return;
@@ -918,6 +1022,11 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private void SpawnSignalPings(Color color)
     {
+        if (!showSignalPings)
+        {
+            return;
+        }
+
         if (pingLayer == null)
         {
             return;
@@ -1333,8 +1442,12 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         typewriterEffect = canvas.gameObject.AddComponent<TypewriterTextEffect>();
 
         backgroundImage = CreateImage("Background", canvas.transform, new Color(0.035f, 0.045f, 0.044f, 1f));
+        ApplySprite(backgroundImage, backgroundSprite, Color.white);
         StretchToParent(backgroundImage.rectTransform, 0f, 0f, 0f, 0f);
-        BuildScanlines(canvas.transform);
+        if (showProceduralScanlines)
+        {
+            BuildScanlines(canvas.transform);
+        }
 
         Text title = CreateText("Title", canvas.transform, font, "Signal Intercept", 34, FontStyle.Bold, TextAnchor.UpperLeft);
         title.color = new Color(0.88f, 0.96f, 0.84f, 1f);
@@ -1351,40 +1464,45 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         BuildTabs(canvas.transform, font);
 
         briefingPanel = CreatePanel("Briefing Panel", canvas.transform);
-        AddPanelLabel(briefingPanel.transform, font, "Desk memo: read this before confidently ruining anything");
+        ApplySprite(briefingPanel.GetComponent<Image>(), briefingPanelSprite, Color.white);
+        AddPanelLabelIfEnabled(briefingPanel.transform, font, "Desk memo: read this before confidently ruining anything");
         briefingText = CreateText("Briefing Text", briefingPanel.transform, font, string.Empty, 16, FontStyle.Normal, TextAnchor.UpperLeft);
-        briefingText.color = new Color(0.91f, 0.94f, 0.82f, 1f);
-        StretchToParent(briefingText.rectTransform, 32f, 62f, 32f, 32f);
+        briefingText.color = useGeneratedArtAssets ? new Color(0.1f, 0.085f, 0.055f, 1f) : new Color(0.91f, 0.94f, 0.82f, 1f);
+        StretchToParent(briefingText.rectTransform, 78f, 86f, 78f, 68f);
 
         interceptPanel = CreatePanel("Intercept Panel", canvas.transform);
+        ApplySprite(interceptPanel.GetComponent<Image>(), interceptPanelSprite, Color.white);
         interceptPanelRect = interceptPanel.GetComponent<RectTransform>();
-        interceptGlowImage = CreateImage("Terminal Glow", interceptPanel.transform, new Color(0.08f, 0.28f, 0.2f, 0.08f));
+        interceptGlowImage = CreateImage("Terminal Glow", interceptPanel.transform, useGeneratedArtAssets ? new Color(0f, 0f, 0f, 0f) : new Color(0.08f, 0.28f, 0.2f, 0.08f));
         StretchToParent(interceptGlowImage.rectTransform, 10f, 10f, 10f, 10f);
-        AddPanelLabel(interceptPanel.transform, font, "Live transcript: probably meaningful, definitely inconvenient");
+        AddPanelLabelIfEnabled(interceptPanel.transform, font, "Live transcript: probably meaningful, definitely inconvenient");
         signalStateText = CreateText("Signal State", interceptPanel.transform, font, string.Empty, 16, FontStyle.Bold, TextAnchor.UpperLeft);
         signalStateText.color = new Color(0.97f, 0.72f, 0.32f, 1f);
-        AnchorTop(signalStateText.rectTransform, 32f, 44f, 32f, 28f);
+        AnchorTop(signalStateText.rectTransform, 92f, 78f, 92f, 28f);
         transmissionText = CreateText("Transmission Text", interceptPanel.transform, font, string.Empty, 30, FontStyle.Normal, TextAnchor.MiddleLeft);
         transmissionText.color = new Color(0.86f, 1f, 0.86f, 1f);
-        StretchToParent(transmissionText.rectTransform, 36f, 82f, 36f, 112f);
+        StretchToParent(transmissionText.rectTransform, 100f, 125f, 100f, 135f);
         BuildClueChips(interceptPanel.transform, font);
         pingLayer = new GameObject("Signal Ping Layer", typeof(RectTransform)).GetComponent<RectTransform>();
         pingLayer.SetParent(interceptPanel.transform, false);
         StretchToParent(pingLayer, 0f, 0f, 0f, 0f);
 
         decisionPanel = CreatePanel("Decision Panel", canvas.transform);
-        AddPanelLabel(decisionPanel.transform, font, "Reply tray: three bad ways to sound employed");
+        ApplySprite(decisionPanel.GetComponent<Image>(), inspectorDecisionPanelSprite != null ? inspectorDecisionPanelSprite : logPanelSprite, Color.white);
+        AddPanelLabelIfEnabled(decisionPanel.transform, font, "Reply tray: three bad ways to sound employed");
         BuildReplyControls(decisionPanel.transform, font);
 
         logPanel = CreatePanel("Mission Log Panel", canvas.transform);
-        AddPanelLabel(logPanel.transform, font, "Filed consequences: the supervisor is typing with intent");
+        ApplySprite(logPanel.GetComponent<Image>(), logPanelSprite, Color.white);
+        AddPanelLabelIfEnabled(logPanel.transform, font, "Filed consequences: the supervisor is typing with intent");
         missionLogText = CreateText("Mission Log Text", logPanel.transform, font, string.Empty, 18, FontStyle.Normal, TextAnchor.UpperLeft);
-        missionLogText.color = new Color(0.9f, 0.9f, 0.78f, 1f);
-        StretchToParent(missionLogText.rectTransform, 32f, 64f, 32f, 86f);
+        missionLogText.color = useGeneratedArtAssets ? new Color(0.14f, 0.11f, 0.075f, 1f) : new Color(0.9f, 0.9f, 0.78f, 1f);
+        StretchToParent(missionLogText.rectTransform, 110f, 118f, 110f, 160f);
 
         supervisorNoteText = CreateText("Supervisor Note", logPanel.transform, font, string.Empty, 15, FontStyle.Bold, TextAnchor.LowerLeft);
-        supervisorNoteText.color = new Color(0.98f, 0.73f, 0.34f, 1f);
-        AnchorBottom(supervisorNoteText.rectTransform, 32f, 24f, 32f, 42f);
+        supervisorNoteText.color = useGeneratedArtAssets ? new Color(0.32f, 0.13f, 0.08f, 1f) : new Color(0.98f, 0.73f, 0.34f, 1f);
+        AnchorBottom(supervisorNoteText.rectTransform, 110f, 74f, 110f, 42f);
+        AddSupervisorAccent(logPanel.transform);
 
         statusText = CreateText("Status Text", canvas.transform, font, string.Empty, 16, FontStyle.Normal, TextAnchor.UpperLeft);
         statusText.color = new Color(0.94f, 0.82f, 0.58f, 1f);
@@ -1394,7 +1512,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         AnchorBottom(generateButton.GetComponent<RectTransform>(), 1080f, 24f, 34f, 50f);
         generateButton.onClick.AddListener(HandlePrimaryAction);
 
-        CreateStampOverlay(canvas.transform, font);
+        if (showStampFlashes)
+        {
+            CreateStampOverlay(canvas.transform, font);
+        }
 
         panelGroups = new CanvasGroup[4];
         panelGroups[(int)DeskTab.Briefing] = EnsureCanvasGroup(briefingPanel);
@@ -1418,18 +1539,26 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     {
         clueTexts = new[]
         {
-            CreateClueChip(parent, font, 34f),
-            CreateClueChip(parent, font, 382f),
-            CreateClueChip(parent, font, 730f)
+            CreateClueChip(parent, font, 34f, 0),
+            CreateClueChip(parent, font, 382f, 1),
+            CreateClueChip(parent, font, 730f, 2)
         };
     }
 
-    private Text CreateClueChip(Transform parent, Font font, float left)
+    private Text CreateClueChip(Transform parent, Font font, float left, int index)
     {
         Image chip = CreateImage("Evidence Clue Chip", parent, new Color(0.12f, 0.16f, 0.14f, 0.96f));
-        var outline = chip.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0.98f, 0.74f, 0.32f, 0.25f);
-        outline.effectDistance = new Vector2(1f, -1f);
+        if (clueChipSprites.Length > 0)
+        {
+            ApplySprite(chip, clueChipSprites[index % clueChipSprites.Length], Color.white);
+        }
+
+        if (showProceduralOutlines)
+        {
+            var outline = chip.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.98f, 0.74f, 0.32f, 0.25f);
+            outline.effectDistance = new Vector2(1f, -1f);
+        }
 
         RectTransform rectTransform = chip.rectTransform;
         rectTransform.anchorMin = Vector2.zero;
@@ -1438,8 +1567,8 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         rectTransform.offsetMax = new Vector2(left + 314f, 82f);
 
         Text label = CreateText("Clue Label", chip.transform, font, "Clue pending", 14, FontStyle.Bold, TextAnchor.MiddleCenter);
-        label.color = new Color(0.45f, 0.52f, 0.48f, 1f);
-        StretchToParent(label.rectTransform, 12f, 6f, 12f, 6f);
+        label.color = useGeneratedArtAssets ? new Color(0.13f, 0.09f, 0.055f, 1f) : new Color(0.45f, 0.52f, 0.48f, 1f);
+        StretchToParent(label.rectTransform, 20f, 9f, 20f, 9f);
         return label;
     }
 
@@ -1456,8 +1585,13 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
     }
 
-    private static void AddPanelLabel(Transform parent, Font font, string label)
+    private void AddPanelLabelIfEnabled(Transform parent, Font font, string label)
     {
+        if (!showProceduralPanelLabels)
+        {
+            return;
+        }
+
         Text tag = CreateText("Panel Label", parent, font, label, 14, FontStyle.Bold, TextAnchor.UpperLeft);
         tag.color = new Color(0.98f, 0.74f, 0.32f, 1f);
         AnchorTop(tag.rectTransform, 24f, 18f, 24f, 24f);
@@ -1484,6 +1618,35 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         stampText = CreateText("Stamp Text", stampObject.transform, font, "URGENT-ish", 44, FontStyle.Bold, TextAnchor.MiddleCenter);
         stampText.color = new Color(1f, 0.2f, 0.16f, 1f);
         StretchToParent(stampText.rectTransform, 0f, 0f, 0f, 0f);
+    }
+
+    private void AddSupervisorAccent(Transform parent)
+    {
+        if (supervisorSprite == null)
+        {
+            return;
+        }
+
+        Image accent = CreateImage("Supervisor Presence Accent", parent, new Color(1f, 1f, 1f, supervisorAccentOpacity));
+        ApplySprite(accent, supervisorSprite, new Color(1f, 1f, 1f, supervisorAccentOpacity));
+        RectTransform rectTransform = accent.rectTransform;
+        rectTransform.anchorMin = new Vector2(1f, 0f);
+        rectTransform.anchorMax = new Vector2(1f, 0f);
+        rectTransform.offsetMin = new Vector2(-210f, 28f);
+        rectTransform.offsetMax = new Vector2(-46f, 192f);
+    }
+
+    private static void ApplySprite(Image image, Sprite sprite, Color color)
+    {
+        if (image == null || sprite == null)
+        {
+            return;
+        }
+
+        image.sprite = sprite;
+        image.color = color;
+        image.type = Image.Type.Simple;
+        image.preserveAspect = false;
     }
 
     private static CanvasGroup EnsureCanvasGroup(GameObject target)
@@ -1530,6 +1693,11 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private Button CreateReplyButton(Transform parent, Font font, int index, float top)
     {
         Button button = CreateButton("Reply Option " + (index + 1), parent, font, "Reply option pending.", 18);
+        if (replyButtonSprites.Length > index)
+        {
+            ApplySprite(button.GetComponent<Image>(), replyButtonSprites[index], Color.white);
+        }
+
         RectTransform rectTransform = button.GetComponent<RectTransform>();
         AnchorTop(rectTransform, 30f, top, 30f, 82f);
         int capturedIndex = index;
@@ -1537,12 +1705,16 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         return button;
     }
 
-    private static GameObject CreatePanel(string name, Transform parent)
+    private GameObject CreatePanel(string name, Transform parent)
     {
         Image panel = CreateImage(name, parent, new Color(0.075f, 0.095f, 0.085f, 0.96f));
-        var outline = panel.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0.98f, 0.74f, 0.32f, 0.22f);
-        outline.effectDistance = new Vector2(2f, -2f);
+        if (showProceduralOutlines)
+        {
+            var outline = panel.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.98f, 0.74f, 0.32f, 0.22f);
+            outline.effectDistance = new Vector2(2f, -2f);
+        }
+
         StretchToParent(panel.rectTransform, 34f, 126f, 34f, 96f);
         return panel.gameObject;
     }
@@ -1588,12 +1760,16 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         return textComponent;
     }
 
-    private static Button CreateButton(string name, Transform parent, Font font, string label, int fontSize)
+    private Button CreateButton(string name, Transform parent, Font font, string label, int fontSize)
     {
         Image buttonImage = CreateImage(name, parent, new Color(0.16f, 0.23f, 0.2f, 1f));
-        var outline = buttonImage.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0.98f, 0.74f, 0.32f, 0.2f);
-        outline.effectDistance = new Vector2(1f, -1f);
+        if (showProceduralOutlines)
+        {
+            var outline = buttonImage.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.98f, 0.74f, 0.32f, 0.2f);
+            outline.effectDistance = new Vector2(1f, -1f);
+        }
+
         var button = buttonImage.gameObject.AddComponent<Button>();
         button.targetGraphic = buttonImage;
         buttonImage.gameObject.AddComponent<UiButtonJuice>();
@@ -1607,7 +1783,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         button.colors = colors;
 
         Text buttonText = CreateText("Label", button.transform, font, label, fontSize, FontStyle.Bold, TextAnchor.MiddleCenter);
-        buttonText.color = new Color(0.92f, 0.98f, 0.9f, 1f);
+        buttonText.color = useGeneratedArtAssets ? new Color(0.12f, 0.09f, 0.055f, 1f) : new Color(0.92f, 0.98f, 0.9f, 1f);
         StretchToParent(buttonText.rectTransform, 10f, 8f, 10f, 8f);
 
         return button;

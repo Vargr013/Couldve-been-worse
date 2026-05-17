@@ -2,136 +2,144 @@
 
 ## 1. High Concept
 
-Signal Intercept is a modern intelligence analysis simulation in which the player assumes the role of an intelligence officer monitoring intercepted communications.
+Signal Intercept is a darkly satirical intelligence desk game about trying to make serious decisions from unreliable AI-generated information.
 
-Using a locally hosted Large Language Model (LLM) through Ollama, the system dynamically generates ambiguous communication messages that may originate from friendly units, hostile actors, or deceptive sources.
+The player works inside Operation Greyline, a fictional border-corridor monitoring desk where Command demands confident answers from vague intercepted transmissions, recurring signal sources, and messy consequences. A locally hosted Large Language Model through Ollama generates the scenario, intercepts, reply options, outcomes, and final report during play.
 
-The player must interpret these transmissions, assess their origin and intent, and make critical decisions under uncertainty. Success depends on analytical reasoning, pattern recognition, and effective use of AI-assisted interpretation.
+The game is not about military realism. It is about deduction under pressure, workplace absurdity, and the consequences of pretending bad information is clear.
 
 ## 2. Core Idea
 
-The central experience revolves around uncertainty and interpretation.
+Each mission is a five-round scenario generated at runtime. The player receives a fictional briefing, studies recurring signal sources, reads intercepted communications, reviews clue chips, and chooses one of three generated replies.
 
-Unlike traditional games with predefined outcomes, Signal Intercept uses AI to:
+Unlike a fixed dialogue tree, Signal Intercept uses local AI to:
 
-- Generate unpredictable communication chains
-- Introduce ambiguity and deception
-- Force the player to reason rather than memorise
+- Generate a concrete fictional operation scenario.
+- Create recurring signal sources with tells, agendas, and reliability patterns.
+- Produce ambiguous intercepts that reference the current situation.
+- Generate reply options and narrative consequences.
+- Build a final debrief from the visible mission state.
 
-The LLM is not decorative. It is the primary driver of gameplay.
+The LLM supplies the language and variation. Unity owns the rules, hidden truth, risk, values, source state, and mission grade.
 
 ## 3. Player Role
 
-The player acts as an Intelligence Officer responsible for:
+The player acts as an overworked intelligence officer responsible for:
 
-- Monitoring intercepted communications
-- Identifying whether transmissions are:
-  - Friendly
-  - Enemy
-  - Misinformation / Deception
-- Selecting appropriate responses or actions
-- Managing risk under incomplete information
+- Reading ambiguous intercepted communications.
+- Comparing transmissions against source notes and clue chips.
+- Choosing scenario-specific replies.
+- Managing risk, confusion, objective status, and Command embarrassment.
+- Interpreting recurring source behaviour across five rounds.
 
 ## 4. Core Gameplay Loop
 
-1. Intercept Message (LLM-generated)
-   - The system generates a short, ambiguous communication.
-2. Analysis Phase
-   - The player interprets tone, language, and context clues.
-3. Decision Phase
-   - The player selects one of three generated reply options.
-   - Each reply represents a different interpretation and response action.
-4. Outcome Resolution
-   - The system evaluates the decision and provides feedback.
-   - Correct interpretation rewards progression.
-   - Incorrect interpretation creates penalties or escalation.
-5. Mission Log
-   - The consequence is recorded and affects the next round.
-6. Next Transmission / Final Report
-   - The loop repeats with new AI-generated content.
-   - After five rounds, the system generates a final mission report.
+1. Scenario Generation
+   - Ollama generates the Operation Greyline briefing, location, stake, complication, bad Command idea, and three recurring signal sources.
+2. Situation Review
+   - The player reads the briefing, source notes, visible values, and latest consequence.
+3. Intercept Generation
+   - Unity chooses a hidden truth and source, then Ollama generates a short intercepted message and three replies.
+4. Deduction Phase
+   - The player reads the intercept, clue chips, and source behaviour.
+5. Reply Selection
+   - The player chooses one generated reply.
+6. Outcome Resolution
+   - Unity evaluates correctness and updates mission values.
+   - Ollama narrates the visible consequence and source note update.
+7. Final Report
+   - After five rounds, Unity calculates the mission grade and Ollama writes the final debrief.
 
-## 5. Role of the LLM
+## 5. Role Of The LLM
 
-The locally hosted LLM is central to the system and is responsible for:
+The local LLM is central to the playable experience.
 
-### 5.1 Communication Generation
+It generates:
 
-- Producing short intercepted messages
-- Ensuring ambiguity and realism
-- Avoiding explicit identification of the source
+- Scenario briefings.
+- Fictional source profiles.
+- Intercept text.
+- Three reply options.
+- Outcome narration.
+- Situation summaries.
+- Source note updates.
+- Final mission reports.
 
-### 5.2 Variation and Replayability
+It does not control:
 
-- Generating different phrasing, tone, and structure
-- Preventing predictable gameplay patterns
+- Hidden truth.
+- Correctness.
+- Risk calculation.
+- Mission values.
+- Round count.
+- Final grade.
 
-### 5.3 Controlled Output Design
+This keeps the game markable and reproducible while still making the AI output meaningful.
 
-Prompts are structured to ensure:
+## 6. Why A Local LLM
 
-- Consistent message length
-- Controlled ambiguity
-- Thematic alignment with modern operations
+Using Ollama supports:
 
-## 6. Why a Local LLM
+- Visible local AI integration.
+- Offline demonstration after model installation.
+- Direct comparison between prompt design and generated output.
+- Controlled short-form generation without a cloud API.
+- Assessment-friendly reproducibility on a configured machine.
 
-Using a locally hosted model supports:
+The current default model is `llama3.1:8b`, with smaller models such as `llama3.2:3b` or `gemma2:2b` available if latency is too high.
 
-- Low-latency interaction during gameplay
-- Offline functionality
-- Greater control over outputs and prompt structure
-- Reproducibility across machines, which is important for assessment
+## 7. Visual Direction
 
-The project will demonstrate understanding of:
+The current visual target is a cartoon office war-room rather than a realistic command centre.
 
-- Local inference vs cloud-based AI
-- Performance constraints
-- Prompt engineering for controlled outputs
+The prototype includes:
 
-## 7. Design Goals
+- A tabbed intelligence desk interface.
+- Generated art panels and cleaned UI sprites.
+- Typewriter intercept reveal.
+- Button motion, panel pulse, shake, and flash effects.
+- An inspector-editable visual scene for manual art and layout adjustment.
 
-- Create a system where AI meaningfully affects gameplay
-- Encourage critical thinking and interpretation
-- Maintain clarity and usability despite AI variability
-- Ensure the system is technically stable and reproducible
+The older procedural scanlines, labels, outlines, and stamp effects can be toggled in the inspector so they do not clash with the generated art assets.
 
-## 8. Unique Selling Point
+## 8. Design Goals
 
-Signal Intercept transforms AI from a content generator into a decision-making partner under uncertainty.
-
-Rather than providing answers, the AI introduces ambiguity, requiring the player to interpret, decide, and accept the consequences.
+- Make local AI visibly central to the gameplay loop.
+- Reward deduction through repeated source patterns and clue chips.
+- Keep the mission short, readable, and demonstrable.
+- Make consequences concrete across the five-round scenario.
+- Maintain a fictional and ethically safer setting.
+- Keep the UI editable in Unity for final presentation polish.
 
 ## 9. Scope
 
-To maintain a focused and achievable project, the prototype will use:
+The current prototype focuses on one strong loop:
 
-- Text-based interface as the primary interaction style
-- Single core gameplay loop
-- One LLM model through Ollama
-- Five-round scenario structure
-- Generated replies, outcomes, and final report
+- One generated five-round scenario.
+- Three recurring signal sources.
+- One intercept and reply choice per round.
+- Visible situation values and source notes.
+- One generated final report.
+- Runtime UGUI interface with inspector-editable visual controls.
 
-This keeps the project stable, technically focused, and achievable within the assessment scope.
+The next sprint will focus on text quality, sharper generated consequences, and more characterful writing.
 
 ## 10. Ethical Considerations
 
-The project acknowledges:
+The project avoids real countries, real conflicts, real organisations, real units, and real people. The military-intelligence framing is fictional and satirical.
 
-- AI-generated misinformation risks
-- The importance of transparency in AI-assisted systems
-- The potential for bias or misleading outputs
+The system also:
 
-The system will:
-
-- Avoid sensitive real-world references
-- Clearly communicate AI involvement to the player
+- Uses validation to reject real-world references where practical.
+- Clearly documents that AI-generated text appears during gameplay.
+- Treats model output as fictional creative content, not factual intelligence.
 
 ## 11. Expected Outcome
 
-The expected outcome is a functional prototype demonstrating:
+The expected outcome is a functional Unity prototype demonstrating:
 
-- Real-time LLM integration using Ollama
-- AI-generated interactive gameplay elements
-- A complete, reproducible system
-- Clear documentation and reflection
+- Real-time Ollama integration.
+- AI-generated scenarios, intercepts, replies, consequences, and reports.
+- A controlled deduction-first gameplay loop.
+- Visible state changes and consequence tracking.
+- A documented, reproducible local LLM workflow.

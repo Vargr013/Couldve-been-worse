@@ -1,201 +1,207 @@
 # Signal Intercept: Ollama Integration Plan
 
-## 1. Purpose of the Ollama Integration
+## 1. Purpose
 
-Signal Intercept uses a locally hosted Large Language Model through Ollama to generate dynamic intercepted communications during gameplay.
+Signal Intercept uses a locally hosted Large Language Model through Ollama as a live gameplay system. The model generates fictional operation content during play, while Unity controls the rules and state.
 
-The LLM is not used as decoration or background text. It directly supports the main gameplay loop by creating ambiguous messages that the player must analyse, classify, and respond to.
+The current implementation uses Ollama for:
 
-The goal is to use local AI to create uncertainty, variation, and replayability while still keeping the system controlled and reproducible.
+- Scenario generation.
+- Recurring source profile generation.
+- Intercept and reply generation.
+- Outcome narration.
+- Situation/source note updates.
+- Final report generation.
 
-## 2. Chosen Local LLM Platform
+The LLM is not a scoring system. It supplies short-form fiction and ambiguity. Unity decides hidden truth, correctness, risk, mission values, and final grade.
 
-The project will use:
+## 2. Platform
 
-- Ollama as the local LLM runtime
-- A locally installed model accessed through Ollama's local API
-- HTTP requests from the Unity game to the local Ollama server
+The project uses:
 
-Ollama is suitable because it allows the model to run locally on the development machine, making the project independent from cloud-based AI services during demonstration.
+- Ollama as the local LLM runtime.
+- Unity HTTP requests to Ollama's local API.
+- The local endpoint `http://localhost:11434/api/generate`.
+- `stream: false` so Unity receives one complete response.
 
-## 3. Proposed Model Choice
+Ollama keeps the prototype independent from cloud services during demonstration after the model has been installed.
 
-The preferred starting model is:
+## 3. Model
 
-- `llama3.1:8b` or a similar available Ollama model
-
-Fallback options:
-
-- `mistral`
-- `gemma2:2b`
-- `llama3.2:3b`
-
-The final model choice will depend on local hardware performance, response speed, and output quality.
-
-A smaller model may be used if latency becomes too high during gameplay.
-
-## 4. Why a Local Model is Appropriate
-
-A local model is appropriate for this project because:
-
-- The game focuses on short text generation rather than long-form writing.
-- The system only needs small intercepted messages and short response options.
-- The assessment requires visible, functioning Ollama integration.
-- Local inference allows the project to demonstrate offline AI behaviour.
-- The system can be tested without depending on internet access or external APIs.
-
-## 5. Inference Timing
-
-The LLM will be used during runtime.
-
-### Runtime Inference
-
-The model will generate intercepted communications while the game is running.
-
-This means:
-
-1. The player starts or continues a round.
-2. The game sends a structured prompt to Ollama.
-3. Ollama generates an intercepted message.
-4. The response is displayed in the game UI.
-5. The player analyses and responds to the message.
-
-### Optional Future Fallback
-
-If runtime latency becomes too slow in a later version, the game could include a small fallback list of prewritten messages.
-
-This is not the main submitted behaviour. The submitted version is intended to demonstrate live Ollama generation. A fallback would only be appropriate if:
-
-- Ollama is not running
-- The model times out
-- A response fails validation
-
-For the current prototype, failures are surfaced through the UI and the player can retry generation.
-
-## 6. Data Flow
+Default model:
 
 ```text
-Game UI
-  |
-  v
-Player starts round / requests next intercept
-  |
-  v
-Game builds structured prompt
-  |
-  v
-HTTP request sent to Ollama local API
-  |
-  v
-Ollama model generates response
-  |
-  v
-Game receives text response
-  |
-  v
-Response is cleaned / validated
-  |
-  v
-Intercept message appears in UI
-  |
-  v
-Player chooses one of three generated replies
-  |
-  v
-Game evaluates decision
-  |
-  v
-Score, risk, and mission state update
+llama3.1:8b
 ```
 
-## 7. Ollama API Approach
-
-Unity will communicate with Ollama over HTTP.
-
-Default local endpoint:
+Fallback options for slower machines:
 
 ```text
-http://localhost:11434/api/generate
+llama3.2:3b
+gemma2:2b
+mistral
 ```
 
-Expected request fields:
+The model name is inspector-editable in `SignalInterceptDemoController`.
 
-- `model`: the selected local Ollama model
-- `prompt`: the structured prompt for the next intercepted message
-- `stream`: `false`, so Unity receives one complete response
+## 4. Runtime Flow
 
-The implementation keeps the request readable and uses labelled prompt output so Unity can parse scenario, intercept, reply, outcome, and final report responses.
-
-## 8. Prompt System
-
-The prompt must keep AI output controlled enough for gameplay.
-
-The system should ask the model to:
-
-- Generate one short intercepted communication
-- Avoid naming the source directly
-- Keep the message ambiguous but interpretable
-- Avoid real-world political, military, or sensitive references
-- Return only the intercepted message text unless structured JSON is required later
-
-Example prompt direction:
+The scenario now generates automatically when the scene starts.
 
 ```text
-Generate one fictional intercepted communication for a modern intelligence analysis game.
-The message must be short, ambiguous, and safe for a fictional setting.
-Do not reveal whether the source is friendly, hostile, or deceptive.
-Do not reference real countries, real conflicts, or real organisations.
-Return only the transmission text.
+Scene starts
+  |
+  v
+Unity requests generated scenario + sources
+  |
+  v
+Briefing and situation board unlock
+  |
+  v
+Player generates round intercept
+  |
+  v
+Unity chooses hidden truth, source, clues, and reply profiles
+  |
+  v
+Ollama generates intercept + three replies
+  |
+  v
+Player chooses a reply
+  |
+  v
+Unity evaluates correctness and updates values
+  |
+  v
+Ollama narrates outcome, situation update, consequence, and source note
+  |
+  v
+After round 5, Unity calculates grade and Ollama writes final report
 ```
 
-## 9. Output Validation
+## 5. Prompt Types
 
-Generated responses should be cleaned before being shown to the player.
+The live prompt text is built in:
 
-Validation should check:
+```text
+Assets/Scripts/InterceptPromptBuilder.cs
+```
 
-- The response is not empty.
-- The response is short enough for the UI.
-- The response does not contain obvious labels such as "friendly", "enemy", or "deception".
-- The response does not include unwanted explanation around the message.
+Current prompt types:
 
-If validation fails, the game retries with a stricter retry prompt or asks the player to generate again.
+- `BuildScenarioPrompt`
+  - Returns labelled scenario fields and three source profiles.
+- `BuildInterceptAndRepliesPrompt`
+  - Uses scenario state, current values, recent consequences, selected source, clues, and hidden intent.
+- `BuildOutcomePrompt`
+  - Uses the player's selected reply, correctness, source behaviour, clues, and visible values.
+- `BuildFinalReportPrompt`
+  - Uses mission grade, correct decisions, risk, final situation, and consequence history.
+- Retry prompts
+  - Request exact labelled output if parsing or validation fails.
 
-## 10. Gameplay Evaluation
+The prompts were condensed after timeout testing. They now use compact context lines instead of long explanatory instructions.
 
-The LLM generates the message, but the game should still control scoring and state.
+## 6. Structured Output
 
-For the prototype, each generated intercept can be paired with an internal hidden classification chosen by the game before the prompt is sent.
+Scenario output uses exact labelled lines such as:
 
-Example hidden classifications:
+```text
+SCENARIO_TITLE:
+LOCATION:
+PLAYER_TASK:
+SOURCE_1_CODE:
+SOURCE_1_DESC:
+```
 
-- Friendly
-- Enemy
-- Deception
+Intercept output uses:
 
-The prompt can be adjusted based on the hidden classification while still preventing the model from revealing it directly.
+```text
+INTERCEPT:
+OPTION_1:
+OPTION_2:
+OPTION_3:
+```
 
-This keeps gameplay fair because the game knows the intended answer while the player only sees the ambiguous transmission.
+Outcome output uses:
 
-## 11. Failure Handling
+```text
+OUTCOME:
+SITUATION:
+CONSEQUENCE:
+SOURCE_NOTE:
+```
 
-The prototype should handle common Ollama issues clearly:
+Labelled output keeps parsing simple and makes validation easier.
 
-- Ollama server not running
-- Selected model not installed
-- Request timeout
-- Invalid or empty model response
+## 7. Validation
 
-If a failure occurs, the UI shows a clear message so the player can resolve the Ollama issue or retry generation.
+Unity validates responses before displaying them.
 
-## 12. Reproducibility Notes
+The game rejects:
 
-The documentation should record:
+- Empty responses.
+- Missing required labels.
+- Intercepts that reveal blocked labels such as `friendly`, `enemy`, `hostile`, `deception`, or `deceptive`.
+- Output that includes real-world countries, conflicts, organisations, units, or people where detectable.
+- Responses that are too malformed for the current flow.
 
-- The model used during final testing
-- The Ollama version if available
-- The local endpoint used
-- Any fallback model used for lower-spec machines
-- Any known latency or performance limits
+On failure, the UI shows a blocking error and allows retry. The prototype does not silently use fallback content.
 
-This supports assessment because another person can reproduce the integration setup.
+## 8. State Ownership
+
+Unity owns:
+
+- Round number.
+- Hidden truth.
+- Source selection.
+- Evidence clue categories.
+- Reply profiles.
+- Correctness.
+- Risk.
+- Corridor stability.
+- Objective status.
+- Confusion.
+- Command embarrassment.
+- Mission grade.
+
+Ollama owns:
+
+- Fictional wording.
+- Satirical tone.
+- Scenario detail.
+- Intercept phrasing.
+- Reply wording.
+- Outcome prose.
+- Final report prose.
+
+This split makes the game playable and reproducible while still proving live AI generation.
+
+## 9. Failure Handling
+
+Common failure states:
+
+- Ollama is not running.
+- The configured model is not installed.
+- The model request times out.
+- The model omits required labels.
+- The model reveals hidden classification labels.
+
+The UI reports these failures directly. The default timeout is inspector-editable and is clamped in code to support the larger scenario prompt.
+
+## 10. Current Limitations
+
+- Local inference speed depends on the machine and model.
+- Text quality can still feel generic; text refinement is planned for the next sprint.
+- Validation cannot catch every possible real-world reference.
+- The current build focuses on one five-round loop, not multiple campaign branches.
+
+## 11. Reproducibility Notes
+
+Record these before final submission:
+
+- Ollama version.
+- Installed model name.
+- Unity version.
+- Test machine specifications.
+- Any model or timeout changes made in the inspector.

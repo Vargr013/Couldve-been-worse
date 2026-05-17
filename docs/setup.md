@@ -85,24 +85,33 @@ Then type a short test prompt and confirm the model answers.
 1. Open Unity Hub.
 2. Add the project folder.
 3. Open the project using Unity 6000.3.9f1.
-4. Open the scene:
+4. Open the main playable scene:
 
    ```text
    Assets/Scenes/SampleScene.unity
    ```
 
-5. Press Play.
+5. For visual-direction editing, open the inspector-friendly scene:
+
+   ```text
+   Assets/Scenes/OperationGreylineVisualScene.unity
+   ```
+
+6. Press Play.
 
 ## 6. Run The Prototype
 
-When the scene starts, the prototype should automatically ask Ollama to generate a five-round scenario. If that succeeds, continue through the loop:
+When the scene starts, the prototype automatically asks Ollama to generate a five-round scenario. If that succeeds, continue through the loop:
 
-1. Generate scenario.
-2. Generate intercept.
-3. Read the transmission and clue chips.
-4. Select a reply.
-5. Review the consequence in the mission log.
-6. Repeat until the final report is available.
+1. Review the generated Operation Greyline briefing.
+2. Read the situation board and source notes.
+3. Generate an intercept.
+4. Read the transmission and clue chips.
+5. Select one generated reply.
+6. Review the consequence and updated source note.
+7. Repeat until the final report is available after round 5.
+
+The visual-direction scene exposes inspector controls for generated art, procedural labels, scanlines, outlines, stamp flashes, signal pings, supervisor accent opacity, and sprite overrides. These controls are intended for final readability tuning without code edits.
 
 ## 7. Common Issues
 
@@ -141,16 +150,26 @@ Fix options:
 - Use a smaller model such as `llama3.2:3b` or `gemma2:2b`.
 - Increase `requestTimeoutSeconds` in the Unity inspector.
 - Close other heavy applications before running the prototype.
+- Keep Ollama warm by running a short `ollama run llama3.1:8b` test before recording.
 
 ### Output fails validation
 
 The game rejects responses that are empty, incorrectly formatted, reveal hidden classification labels, or mention real-world conflicts, countries, organisations, or people. Press the generation button again so the retry prompt can request a cleaner response.
 
+### Generated art and old effects clash
+
+Open `Assets/Scenes/OperationGreylineVisualScene.unity` and adjust the `SignalInterceptDemoController` inspector fields:
+
+- Turn off procedural scanlines, outlines, labels, stamp flashes, or signal pings.
+- Reduce supervisor accent opacity.
+- Override any sprite slot manually.
+- Keep the generated art asset loading enabled unless testing a pure procedural UI.
+
 ## 8. Building The Final Playable Version
 
 1. In Unity, open `File > Build Profiles`.
 2. Select the Windows build target.
-3. Confirm `Assets/Scenes/SampleScene.unity` is included in the scene list.
+3. Confirm `Assets/Scenes/SampleScene.unity` and `Assets/Scenes/OperationGreylineVisualScene.unity` are included in the scene list.
 4. Build the project into a folder named:
 
    ```text

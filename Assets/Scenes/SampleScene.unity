@@ -397,4 +397,20 @@ MonoBehaviour:
   ollamaEndpoint: http://localhost:11434/api/generate
   modelName: llama3.1:8b
   requestTimeoutSeconds: 120
+  useGeneratedArtAssets: 1
+  loadGeneratedArtFromDisk: 1
+  showProceduralPanelLabels: 0
+  showProceduralScanlines: 0
+  showProceduralOutlines: 0
+  showStampFlashes: 0
+  showSignalPings: 0
+  supervisorAccentOpacity: 0.12
+  inspectorBackgroundSprite: {fileID: 0}
+  inspectorBriefingPanelSprite: {fileID: 0}
+  inspectorInterceptPanelSprite: {fileID: 0}
+  inspectorMissionLogPanelSprite: {fileID: 0}
+  inspectorDecisionPanelSprite: {fileID: 0}
+  inspectorSupervisorSprite: {fileID: 0}
+  inspectorReplyButtonSprites: []
+  inspectorClueChipSprites: []
   initialTransmissionText: Awaiting intercept...

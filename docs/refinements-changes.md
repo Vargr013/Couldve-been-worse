@@ -99,6 +99,31 @@ Refinement:
 
 The first version proved the integration. The later version made the prototype easier to demonstrate in video evidence and easier for a marker to understand.
 
+## 2026-05-17: Visual Direction Scene And Art Integration
+
+- Added generated art assets for the cartoon office war-room direction.
+- Cleaned the generated images and added sliced UI-friendly variants.
+- Added `OperationGreylineVisualScene.unity` as an inspector-editable scene for manual polish.
+- Hooked the gameplay controller into the new scene so it uses the same Ollama-driven mission loop.
+- Added inspector switches for generated art, procedural labels, scanlines, outlines, stamp flashes, signal pings, and supervisor accent opacity.
+- Reduced default procedural effects in the visual scene so the new art remains readable.
+
+Reasoning:
+
+The first visual polish pass added motion and screen effects, but those effects competed with the generated image style. The revised scene keeps the gameplay functional while giving the final presentation a clearer art direction that can be adjusted directly in Unity.
+
+## 2026-05-17: Documentation Alignment
+
+- Updated the high concept to match the current scenario-driven deduction loop.
+- Updated the Ollama plan to describe scenario generation, source profiles, compact prompts, validation, and state ownership.
+- Updated the setup guide with the visual scene, inspector controls, and current run flow.
+- Updated the LLM report to mention source notes, condensed prompts, visual polish, and the next text-quality sprint.
+- Kept the prompt archive as the record of earlier and current prompt structures.
+
+Reasoning:
+
+The repository documentation needs to describe the actual shipped prototype, not the earliest one-button Ollama demo.
+
 ## Current Remaining Refinements
 
 - Record exact final Ollama model and version.
@@ -108,6 +133,7 @@ The first version proved the integration. The later version made the prototype e
 - Record the final showcase video.
 - Confirm the GitHub repository is accessible to the marker.
 - Package documentation and final build into the Drive submission folder.
+- Improve the generated text quality in the next sprint so scenario consequences and satire feel less generic.
 
 ## Known Limitations
 
@@ -115,4 +141,4 @@ The first version proved the integration. The later version made the prototype e
 - Runtime generation speed depends on the selected model and hardware.
 - Some LLM outputs may still fail validation and require retrying.
 - The current project is focused on a single polished gameplay loop rather than multiple levels or broad content variety.
-
+- The visual scene is intentionally inspector-editable because final image placement and text polish may still need manual tuning.
