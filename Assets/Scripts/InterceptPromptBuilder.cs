@@ -15,7 +15,7 @@ public static class InterceptPromptBuilder
     public static string BuildScenarioPrompt()
     {
         return OperationContext + "\n\n" +
-               "Create one 5-round fictional scenario. Return only these labelled lines. Keep values under 14 words. Source biases must be one Friendly, one Enemy, one Deception.\n" +
+               "Create one 5-round fictional scenario. Return only these labelled lines. No intro, markdown, bullets, numbering, or code fence. Keep values under 14 words. Source biases must be exactly Friendly, Enemy, and Deception, with no extra words on bias lines.\n" +
                "SCENARIO_TITLE:\nLOCATION:\nPLAYER_TASK:\nCIVILIAN_OR_OPERATIONAL_STAKE:\nCOMPLICATION:\nCOMMAND_BAD_IDEA:\nTONE_DETAIL:\nROUND_GOAL:\n" +
                "SOURCE_1_CODE:\nSOURCE_1_PUBLIC:\nSOURCE_1_BIAS:\nSOURCE_1_RELIABILITY:\nSOURCE_1_TELL:\nSOURCE_1_AGENDA:\n" +
                "SOURCE_2_CODE:\nSOURCE_2_PUBLIC:\nSOURCE_2_BIAS:\nSOURCE_2_RELIABILITY:\nSOURCE_2_TELL:\nSOURCE_2_AGENDA:\n" +
@@ -25,7 +25,7 @@ public static class InterceptPromptBuilder
     public static string BuildScenarioRetryPrompt()
     {
         return BuildScenarioPrompt() + "\n\n" +
-               "Retry: exact labels only. Fill every line.";
+               "Retry: exact labels only. Fill every line. SOURCE_1_BIAS, SOURCE_2_BIAS, and SOURCE_3_BIAS must each contain only Friendly, Enemy, or Deception.";
     }
 
     public static string BuildInterceptAndRepliesPrompt(

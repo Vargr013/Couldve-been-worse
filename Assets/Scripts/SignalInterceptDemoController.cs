@@ -12,6 +12,12 @@ using UnityEngine.UI;
 
 public sealed class SignalInterceptDemoController : MonoBehaviour
 {
+    private static readonly Color ReadableDarkPlate = new(0.025f, 0.04f, 0.035f, 0.84f);
+    private static readonly Color ReadablePaperPlate = new(0.93f, 0.84f, 0.66f, 0.88f);
+    private static readonly Color ReadableInk = new(0.13f, 0.1f, 0.065f, 1f);
+    private static readonly Color ReadableLightText = new(0.88f, 0.96f, 0.86f, 1f);
+    private static readonly Color AmberText = new(0.98f, 0.73f, 0.34f, 1f);
+
     [Header("Ollama")]
     [SerializeField] private string ollamaEndpoint = "http://localhost:11434/api/generate";
     [SerializeField] private string modelName = "llama3.1:8b";
@@ -132,14 +138,125 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     {
         requestTimeoutSeconds = Mathf.Max(requestTimeoutSeconds, 120);
         LoadGeneratedArtAssets();
-        BuildInterface();
+        if (!TryBindEditableSceneLayout())
+        {
+            enabled = false;
+            return;
+        }
+
         StartMission();
+    }
+
+    [ContextMenu("Rebuild Editable Scene UI")]
+    private void RebuildEditableSceneUi()
+    {
+        LoadGeneratedArtAssets();
+
+        GameObject existingRoot = GameObject.Find("Signal Intercept UI");
+        if (existingRoot != null)
+        {
+            DestroyImmediate(existingRoot);
+        }
+
+        BuildInterface();
     }
 
     private void OnDestroy()
     {
         requestCancellation?.Cancel();
         requestCancellation?.Dispose();
+    }
+
+    private bool TryBindEditableSceneLayout()
+    {
+        GameObject root = GameObject.Find("Signal Intercept UI");
+        if (root == null)
+        {
+            Debug.LogError("Signal Intercept UI scene hierarchy is missing. Rebuild it from Tools > Signal Intercept > Rebuild Editable Scene UI.");
+            return false;
+        }
+
+        EnsureEventSystem();
+        Canvas canvas = root.GetComponent<Canvas>();
+        if (canvas == null)
+        {
+            Debug.LogError("Signal Intercept UI exists but is missing its Canvas component.");
+            return false;
+        }
+
+        uiJuice = root.GetComponent<UiJuice>() ?? root.AddComponent<UiJuice>();
+        typewriterEffect = root.GetComponent<TypewriterTextEffect>() ?? root.AddComponent<TypewriterTextEffect>();
+
+        backgroundImage = FindNamedComponent<Image>(root, "Background");
+        briefingPanel = FindNamedTransform(root, "Briefing Panel")?.gameObject;
+        interceptPanel = FindNamedTransform(root, "Intercept Panel")?.gameObject;
+        decisionPanel = FindNamedTransform(root, "Decision Panel")?.gameObject;
+        logPanel = FindNamedTransform(root, "Mission Log Panel")?.gameObject;
+        briefingText = FindNamedComponent<Text>(root, "Briefing Text");
+        statsText = FindNamedComponent<Text>(root, "Stats");
+        statusText = FindNamedComponent<Text>(root, "Status Text");
+        transmissionText = FindNamedComponent<Text>(root, "Transmission Text");
+        decisionHelperText = FindNamedComponent<Text>(root, "Reply Helper");
+        missionLogText = FindNamedComponent<Text>(root, "Mission Log Text");
+        signalStateText = FindNamedComponent<Text>(root, "Signal State");
+        supervisorNoteText = FindNamedComponent<Text>(root, "Supervisor Note");
+        stampText = FindNamedComponent<Text>(root, "Stamp Text");
+        generateButton = FindNamedComponent<Button>(root, "Primary Action Button");
+        interceptGlowImage = FindNamedComponent<Image>(root, "Terminal Glow");
+        interceptPanelRect = interceptPanel == null ? null : interceptPanel.GetComponent<RectTransform>();
+        pingLayer = FindNamedTransform(root, "Signal Ping Layer") as RectTransform;
+        stampGroup = FindNamedComponent<CanvasGroup>(root, "Stamp Overlay");
+        clueTexts = FindRepeatedNamedComponents<Text>(root, "Clue Label").ToArray();
+        tabButtons = new[]
+        {
+            FindNamedComponent<Button>(root, "Tab Briefing"),
+            FindNamedComponent<Button>(root, "Tab Intercept"),
+            FindNamedComponent<Button>(root, "Tab Decision"),
+            FindNamedComponent<Button>(root, "Tab MissionLog")
+        };
+        replyButtons = new[]
+        {
+            FindNamedComponent<Button>(root, "Reply Option 1"),
+            FindNamedComponent<Button>(root, "Reply Option 2"),
+            FindNamedComponent<Button>(root, "Reply Option 3")
+        };
+
+        if (briefingPanel == null || interceptPanel == null || decisionPanel == null || logPanel == null ||
+            briefingText == null || statsText == null || statusText == null || transmissionText == null || decisionHelperText == null ||
+            missionLogText == null || signalStateText == null || generateButton == null ||
+            interceptPanelRect == null ||
+            tabButtons.Any(button => button == null) || replyButtons.Any(button => button == null))
+        {
+            Debug.LogError("Editable Signal Intercept UI is missing required gameplay controls or text fields. Decorative overlays can be removed, but the main panels, tab buttons, reply buttons, and core text objects must stay named.");
+            return false;
+        }
+
+        generateButton.onClick.RemoveAllListeners();
+        generateButton.onClick.AddListener(HandlePrimaryAction);
+        BindTabButton(tabButtons[0], DeskTab.Briefing);
+        BindTabButton(tabButtons[1], DeskTab.Intercept);
+        BindTabButton(tabButtons[2], DeskTab.Decision);
+        BindTabButton(tabButtons[3], DeskTab.MissionLog);
+
+        for (int i = 0; i < replyButtons.Length; i++)
+        {
+            int capturedIndex = i;
+            replyButtons[i].onClick.RemoveAllListeners();
+            replyButtons[i].onClick.AddListener(() => SelectReply(capturedIndex));
+        }
+
+        panelGroups = new CanvasGroup[4];
+        panelGroups[(int)DeskTab.Briefing] = EnsureCanvasGroup(briefingPanel);
+        panelGroups[(int)DeskTab.Intercept] = EnsureCanvasGroup(interceptPanel);
+        panelGroups[(int)DeskTab.Decision] = EnsureCanvasGroup(decisionPanel);
+        panelGroups[(int)DeskTab.MissionLog] = EnsureCanvasGroup(logPanel);
+        return true;
+    }
+
+    private void BindTabButton(Button button, DeskTab tab)
+    {
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(() => ShowTab(tab));
     }
 
     private void StartMission()
@@ -151,7 +268,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         missionLog = "Mission desk online. No scenario loaded, so Command is currently confident about nothing.";
         missionLogText.text = missionLog;
         ApplyClueChips(Array.Empty<EvidenceClue>());
-        supervisorNoteText.text = "Supervisor note: \"Try not to make the corridor worse before coffee.\"";
+        if (supervisorNoteText != null)
+        {
+            supervisorNoteText.text = "Supervisor note: \"Try not to make the corridor worse before coffee.\"";
+        }
         statusText.text = $"Ollama required: {ollamaEndpoint}";
         signalStateText.text = "Receiver idle";
         SetPrimaryAction(PrimaryActionMode.GenerateScenario);
@@ -659,7 +779,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         FlashStamp(stamp, flash);
         SpawnSignalPings(wasCorrect ? new Color(0.28f, 1f, 0.48f, 0.72f) : new Color(1f, 0.22f, 0.12f, 0.72f));
-        uiJuice.Flash(backgroundImage, wasCorrect ? new Color(0.04f, 0.12f, 0.08f, 1f) : new Color(0.16f, 0.04f, 0.04f, 1f), 0.28f);
+        if (backgroundImage != null)
+        {
+            uiJuice.Flash(backgroundImage, wasCorrect ? new Color(0.04f, 0.12f, 0.08f, 1f) : new Color(0.16f, 0.04f, 0.04f, 1f), 0.28f);
+        }
     }
 
     private async Task<GeneratedInterceptPackage> RequestValidPackage(
@@ -814,7 +937,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     {
         missionLog = string.IsNullOrWhiteSpace(missionLog) ? entry : missionLog + "\n\n" + entry;
         missionLogText.text = missionLog;
-        supervisorNoteText.text = BuildSupervisorNote();
+        if (supervisorNoteText != null)
+        {
+            supervisorNoteText.text = BuildSupervisorNote();
+        }
         uiJuice.Pulse(missionLogText.transform, 1.01f, 0.22f);
         FlashStamp("FILED-ish", new Color(1f, 0.74f, 0.2f, 1f));
         CanvasGroup group = GetPanelGroup(DeskTab.MissionLog);
@@ -888,8 +1014,8 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         {
             clueTexts[i].text = i < clues.Count ? clues[i].Text : "Clue pending";
             clueTexts[i].color = i < clues.Count
-                ? new Color(0.98f, 0.78f, 0.38f, 1f)
-                : new Color(0.45f, 0.52f, 0.48f, 1f);
+                ? AmberText
+                : new Color(0.62f, 0.7f, 0.66f, 1f);
         }
     }
 
@@ -1216,6 +1342,11 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private static ScenarioBrief ParseScenario(string response)
     {
         var fields = ReadLabelledFields(response);
+        if (!fields.ContainsKey("SCENARIO_TITLE"))
+        {
+            return ParseLooseScenario(response);
+        }
+
         string title = ReadRequiredField(fields, "SCENARIO_TITLE");
         string location = ReadRequiredField(fields, "LOCATION");
         string task = ReadRequiredField(fields, "PLAYER_TASK");
@@ -1231,7 +1362,116 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             ParseSource(fields, 3)
         };
 
-        return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, toneDetail, roundGoal, sources);
+        return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, toneDetail, roundGoal, sources.ToArray());
+    }
+
+    private static ScenarioBrief ParseLooseScenario(string response)
+    {
+        List<string> lines = response
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => StripLabelDecoration(line.Trim()))
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Where(line => !line.StartsWith("Here", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        int index = 0;
+        string title = ReadOrderedScenarioValue(lines, ref index, "Scenario");
+        string location = ReadOrderedScenarioValue(lines, ref index, "Unspecified corridor");
+        string task = ReadOrderedScenarioValue(lines, ref index, "Stabilise the operation");
+        string stake = ReadOrderedScenarioValue(lines, ref index, "Civilian confidence is collapsing");
+        string complication = ReadOrderedScenarioValue(lines, ref index, "The available reports contradict each other");
+        string commandBadIdea = ReadOrderedScenarioValue(lines, ref index, "Command wants a fast public answer");
+        string toneDetail = ReadOrderedScenarioValue(lines, ref index, "Everyone is calm in the least helpful way");
+        string roundGoal = ReadOrderedScenarioValue(lines, ref index, "Read the sources before acting");
+        var sources = new List<SignalSourceProfile>();
+
+        while (index < lines.Count && sources.Count < 3)
+        {
+            if (TryReadLooseSource(lines, ref index, out SignalSourceProfile source))
+            {
+                sources.Add(source);
+                continue;
+            }
+
+            index++;
+        }
+
+        if (sources.Count != 3)
+        {
+            throw new GeneratedTextValidationException("Ollama did not return required field: SCENARIO_TITLE");
+        }
+
+        return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, toneDetail, roundGoal, sources.ToArray());
+    }
+
+    private static string ReadOrderedScenarioValue(IReadOnlyList<string> lines, ref int index, string fallback)
+    {
+        while (index < lines.Count && TryReadLeadingClassification(lines[index], out _, out _))
+        {
+            index++;
+        }
+
+        if (index >= lines.Count)
+        {
+            return fallback;
+        }
+
+        return ReadLineValue(lines[index++], fallback);
+    }
+
+    private static bool TryReadLooseSource(IReadOnlyList<string> lines, ref int index, out SignalSourceProfile source)
+    {
+        source = null;
+        if (!TryReadLeadingClassification(lines[index], out InterceptClassification bias, out string codeName))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(codeName))
+        {
+            codeName = bias + " Source";
+        }
+
+        index++;
+        string publicDescription = "Unlisted source";
+        string reliability = "Unknown";
+        string tell = "No tell logged";
+        string agenda = "Unclear agenda";
+
+        while (index < lines.Count && !TryReadLeadingClassification(lines[index], out _, out _))
+        {
+            string line = lines[index++];
+            string key = NormalizeLabelKey(ReadLineKey(line));
+            string value = ReadLineValue(line, string.Empty);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            if (key.EndsWith("PUBLIC", StringComparison.Ordinal))
+            {
+                publicDescription = value;
+            }
+            else if (key.EndsWith("RELIABILITY", StringComparison.Ordinal))
+            {
+                reliability = value;
+            }
+            else if (key.EndsWith("TELL", StringComparison.Ordinal))
+            {
+                tell = value;
+            }
+            else if (key.EndsWith("AGENDA", StringComparison.Ordinal))
+            {
+                agenda = value;
+            }
+            else if (key.EndsWith("BIAS", StringComparison.Ordinal) && TryParseClassification(value, out InterceptClassification parsedBias))
+            {
+                bias = parsedBias;
+            }
+        }
+
+        source = new SignalSourceProfile(codeName, publicDescription, bias, reliability, tell, agenda);
+        return true;
     }
 
     private static SignalSourceProfile ParseSource(Dictionary<string, string> fields, int index)
@@ -1304,14 +1544,14 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         string[] lines = response.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         foreach (string rawLine in lines)
         {
-            string line = rawLine.Trim();
+            string line = StripLabelDecoration(rawLine.Trim());
             int separator = line.IndexOf(':');
             if (separator <= 0)
             {
                 continue;
             }
 
-            string key = line.Substring(0, separator).Trim();
+            string key = NormalizeLabelKey(line.Substring(0, separator));
             string value = line.Substring(separator + 1).Trim();
             fields[key] = CleanResponse(value);
         }
@@ -1321,12 +1561,59 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private static string ReadRequiredField(Dictionary<string, string> fields, string key)
     {
-        if (!fields.TryGetValue(key, out string value) || string.IsNullOrWhiteSpace(value))
+        string normalizedKey = NormalizeLabelKey(key);
+        if (!fields.TryGetValue(normalizedKey, out string value) || string.IsNullOrWhiteSpace(value))
         {
             throw new GeneratedTextValidationException("Ollama did not return required field: " + key);
         }
 
         return CleanResponse(value);
+    }
+
+    private static string StripLabelDecoration(string line)
+    {
+        string cleaned = line.Trim().Trim('`', '*', '_');
+        while (cleaned.Length > 0 && (cleaned[0] == '-' || cleaned[0] == '*' || cleaned[0] == '\u2022'))
+        {
+            cleaned = cleaned.Substring(1).TrimStart();
+        }
+
+        int dotIndex = cleaned.IndexOf('.');
+        if (dotIndex > 0 && dotIndex < 4 && cleaned.Take(dotIndex).All(char.IsDigit))
+        {
+            cleaned = cleaned.Substring(dotIndex + 1).TrimStart();
+        }
+
+        return cleaned.Trim().Trim('`', '*', '_');
+    }
+
+    private static string NormalizeLabelKey(string key)
+    {
+        string normalized = new string((key ?? string.Empty)
+            .Trim()
+            .Select(character => char.IsLetterOrDigit(character) ? char.ToUpperInvariant(character) : '_')
+            .ToArray());
+
+        while (normalized.Contains("__"))
+        {
+            normalized = normalized.Replace("__", "_");
+        }
+
+        normalized = normalized.Trim('_');
+        return normalized switch
+        {
+            "TITLE" => "SCENARIO_TITLE",
+            "SCENARIO" => "SCENARIO_TITLE",
+            "TASK" => "PLAYER_TASK",
+            "STAKE" => "CIVILIAN_OR_OPERATIONAL_STAKE",
+            "CIVILIAN_STAKE" => "CIVILIAN_OR_OPERATIONAL_STAKE",
+            "OPERATIONAL_STAKE" => "CIVILIAN_OR_OPERATIONAL_STAKE",
+            "BAD_IDEA" => "COMMAND_BAD_IDEA",
+            "COMMAND_IDEA" => "COMMAND_BAD_IDEA",
+            "TONE" => "TONE_DETAIL",
+            "GOAL" => "ROUND_GOAL",
+            _ => normalized
+        };
     }
 
     private static bool TryReadValue(string line, string prefix, out string value)
@@ -1348,12 +1635,93 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private static InterceptClassification ParseClassification(string value)
     {
-        if (Enum.TryParse(value.Replace(" ", string.Empty), true, out InterceptClassification classification))
+        if (TryParseClassification(value, out InterceptClassification classification))
         {
             return classification;
         }
 
-        throw new GeneratedTextValidationException("Ollama returned an invalid source bias: " + value);
+        throw new GeneratedTextValidationException("Ollama returned an invalid source bias. Expected Friendly, Enemy, or Deception; got: " + value);
+    }
+
+    private static bool TryParseClassification(string value, out InterceptClassification classification)
+    {
+        string cleanedValue = CleanResponse(value);
+        if (Enum.TryParse(cleanedValue.Replace(" ", string.Empty), true, out classification))
+        {
+            return true;
+        }
+
+        string leadingWord = ReadLeadingWord(cleanedValue);
+        if (Enum.TryParse(leadingWord, true, out classification))
+        {
+            return true;
+        }
+
+        string normalized = leadingWord.ToLowerInvariant();
+        if (normalized == "deceptive")
+        {
+            classification = InterceptClassification.Deception;
+            return true;
+        }
+
+        if (normalized == "hostile")
+        {
+            classification = InterceptClassification.Enemy;
+            return true;
+        }
+
+        classification = InterceptClassification.Deception;
+        return false;
+    }
+
+    private static bool TryReadLeadingClassification(string line, out InterceptClassification classification, out string remainder)
+    {
+        string cleanedLine = CleanResponse(line);
+        string leadingWord = ReadLeadingWord(cleanedLine);
+        if (!TryParseClassification(leadingWord, out classification))
+        {
+            remainder = string.Empty;
+            return false;
+        }
+
+        remainder = cleanedLine.Substring(Math.Min(leadingWord.Length, cleanedLine.Length)).Trim(' ', '-', ':');
+        string remainderKey = NormalizeLabelKey(ReadLineKey(remainder));
+        if (remainderKey == "BIAS" || remainderKey == "PUBLIC" || remainderKey == "RELIABILITY" || remainderKey == "TELL" || remainderKey == "AGENDA")
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string ReadLineKey(string line)
+    {
+        int separator = line.IndexOf(':');
+        return separator <= 0 ? line : line.Substring(0, separator);
+    }
+
+    private static string ReadLineValue(string line, string fallback)
+    {
+        int separator = line.IndexOf(':');
+        string value = separator <= 0 ? line : line.Substring(separator + 1);
+        value = CleanResponse(value);
+        return string.IsNullOrWhiteSpace(value) ? fallback : value;
+    }
+
+    private static string ReadLeadingWord(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        int length = 0;
+        while (length < value.Length && char.IsLetter(value[length]))
+        {
+            length++;
+        }
+
+        return length == 0 ? string.Empty : value.Substring(0, length);
     }
 
     private static void ValidateIntercept(string response)
@@ -1442,7 +1810,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         typewriterEffect = canvas.gameObject.AddComponent<TypewriterTextEffect>();
 
         backgroundImage = CreateImage("Background", canvas.transform, new Color(0.035f, 0.045f, 0.044f, 1f));
-        ApplySprite(backgroundImage, backgroundSprite, Color.white);
+        ApplySprite(backgroundImage, backgroundSprite, Color.white, false);
         StretchToParent(backgroundImage.rectTransform, 0f, 0f, 0f, 0f);
         if (showProceduralScanlines)
         {
@@ -1466,9 +1834,12 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         briefingPanel = CreatePanel("Briefing Panel", canvas.transform);
         ApplySprite(briefingPanel.GetComponent<Image>(), briefingPanelSprite, Color.white);
         AddPanelLabelIfEnabled(briefingPanel.transform, font, "Desk memo: read this before confidently ruining anything");
+        Image briefingPlate = CreateReadablePlate("Briefing Text Plate", briefingPanel.transform, ReadablePaperPlate);
+        StretchToParent(briefingPlate.rectTransform, 78f, 74f, 78f, 56f);
         briefingText = CreateText("Briefing Text", briefingPanel.transform, font, string.Empty, 16, FontStyle.Normal, TextAnchor.UpperLeft);
-        briefingText.color = useGeneratedArtAssets ? new Color(0.1f, 0.085f, 0.055f, 1f) : new Color(0.91f, 0.94f, 0.82f, 1f);
-        StretchToParent(briefingText.rectTransform, 78f, 86f, 78f, 68f);
+        briefingText.color = useGeneratedArtAssets ? ReadableInk : ReadableLightText;
+        ConfigureReadableText(briefingText, 13, 16);
+        StretchToParent(briefingText.rectTransform, 102f, 98f, 102f, 82f);
 
         interceptPanel = CreatePanel("Intercept Panel", canvas.transform);
         ApplySprite(interceptPanel.GetComponent<Image>(), interceptPanelSprite, Color.white);
@@ -1476,12 +1847,18 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         interceptGlowImage = CreateImage("Terminal Glow", interceptPanel.transform, useGeneratedArtAssets ? new Color(0f, 0f, 0f, 0f) : new Color(0.08f, 0.28f, 0.2f, 0.08f));
         StretchToParent(interceptGlowImage.rectTransform, 10f, 10f, 10f, 10f);
         AddPanelLabelIfEnabled(interceptPanel.transform, font, "Live transcript: probably meaningful, definitely inconvenient");
+        Image signalPlate = CreateReadablePlate("Signal State Plate", interceptPanel.transform, new Color(0.025f, 0.055f, 0.04f, 0.78f));
+        AnchorTop(signalPlate.rectTransform, 92f, 70f, 92f, 38f);
         signalStateText = CreateText("Signal State", interceptPanel.transform, font, string.Empty, 16, FontStyle.Bold, TextAnchor.UpperLeft);
-        signalStateText.color = new Color(0.97f, 0.72f, 0.32f, 1f);
-        AnchorTop(signalStateText.rectTransform, 92f, 78f, 92f, 28f);
-        transmissionText = CreateText("Transmission Text", interceptPanel.transform, font, string.Empty, 30, FontStyle.Normal, TextAnchor.MiddleLeft);
-        transmissionText.color = new Color(0.86f, 1f, 0.86f, 1f);
-        StretchToParent(transmissionText.rectTransform, 100f, 125f, 100f, 135f);
+        signalStateText.color = AmberText;
+        ConfigureReadableText(signalStateText, 13, 16);
+        AnchorTop(signalStateText.rectTransform, 110f, 78f, 110f, 24f);
+        Image transcriptPlate = CreateReadablePlate("Transmission Text Plate", interceptPanel.transform, ReadableDarkPlate);
+        StretchToParent(transcriptPlate.rectTransform, 116f, 128f, 116f, 146f);
+        transmissionText = CreateText("Transmission Text", interceptPanel.transform, font, string.Empty, 26, FontStyle.Normal, TextAnchor.MiddleLeft);
+        transmissionText.color = ReadableLightText;
+        ConfigureReadableText(transmissionText, 18, 28);
+        StretchToParent(transmissionText.rectTransform, 140f, 150f, 140f, 174f);
         BuildClueChips(interceptPanel.transform, font);
         pingLayer = new GameObject("Signal Ping Layer", typeof(RectTransform)).GetComponent<RectTransform>();
         pingLayer.SetParent(interceptPanel.transform, false);
@@ -1495,21 +1872,30 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         logPanel = CreatePanel("Mission Log Panel", canvas.transform);
         ApplySprite(logPanel.GetComponent<Image>(), logPanelSprite, Color.white);
         AddPanelLabelIfEnabled(logPanel.transform, font, "Filed consequences: the supervisor is typing with intent");
+        Image logPlate = CreateReadablePlate("Mission Log Text Plate", logPanel.transform, ReadablePaperPlate);
+        StretchToParent(logPlate.rectTransform, 122f, 104f, 122f, 142f);
         missionLogText = CreateText("Mission Log Text", logPanel.transform, font, string.Empty, 18, FontStyle.Normal, TextAnchor.UpperLeft);
-        missionLogText.color = useGeneratedArtAssets ? new Color(0.14f, 0.11f, 0.075f, 1f) : new Color(0.9f, 0.9f, 0.78f, 1f);
-        StretchToParent(missionLogText.rectTransform, 110f, 118f, 110f, 160f);
+        missionLogText.color = useGeneratedArtAssets ? ReadableInk : ReadableLightText;
+        ConfigureReadableText(missionLogText, 13, 17);
+        StretchToParent(missionLogText.rectTransform, 148f, 128f, 148f, 168f);
 
+        Image supervisorPlate = CreateReadablePlate("Supervisor Note Plate", logPanel.transform, new Color(0.93f, 0.84f, 0.66f, 0.78f));
+        AnchorBottom(supervisorPlate.rectTransform, 122f, 72f, 122f, 46f);
         supervisorNoteText = CreateText("Supervisor Note", logPanel.transform, font, string.Empty, 15, FontStyle.Bold, TextAnchor.LowerLeft);
-        supervisorNoteText.color = useGeneratedArtAssets ? new Color(0.32f, 0.13f, 0.08f, 1f) : new Color(0.98f, 0.73f, 0.34f, 1f);
-        AnchorBottom(supervisorNoteText.rectTransform, 110f, 74f, 110f, 42f);
+        supervisorNoteText.color = useGeneratedArtAssets ? new Color(0.27f, 0.11f, 0.065f, 1f) : AmberText;
+        ConfigureReadableText(supervisorNoteText, 12, 15);
+        AnchorBottom(supervisorNoteText.rectTransform, 146f, 78f, 146f, 34f);
         AddSupervisorAccent(logPanel.transform);
 
+        Image statusPlate = CreateReadablePlate("Status Text Plate", canvas.transform, new Color(0.015f, 0.025f, 0.022f, 0.76f));
+        AnchorBottom(statusPlate.rectTransform, 28f, 18f, 300f, 62f);
         statusText = CreateText("Status Text", canvas.transform, font, string.Empty, 16, FontStyle.Normal, TextAnchor.UpperLeft);
-        statusText.color = new Color(0.94f, 0.82f, 0.58f, 1f);
-        AnchorBottom(statusText.rectTransform, 34f, 24f, 430f, 50f);
+        statusText.color = AmberText;
+        ConfigureReadableText(statusText, 12, 16);
+        AnchorBottom(statusText.rectTransform, 44f, 28f, 320f, 44f);
 
         generateButton = CreateButton("Primary Action Button", canvas.transform, font, "Generate Scenario", 18);
-        AnchorBottom(generateButton.GetComponent<RectTransform>(), 1080f, 24f, 34f, 50f);
+        AnchorBottom(generateButton.GetComponent<RectTransform>(), 1010f, 24f, 34f, 54f);
         generateButton.onClick.AddListener(HandlePrimaryAction);
 
         if (showStampFlashes)
@@ -1567,8 +1953,12 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         rectTransform.offsetMax = new Vector2(left + 314f, 82f);
 
         Text label = CreateText("Clue Label", chip.transform, font, "Clue pending", 14, FontStyle.Bold, TextAnchor.MiddleCenter);
-        label.color = useGeneratedArtAssets ? new Color(0.13f, 0.09f, 0.055f, 1f) : new Color(0.45f, 0.52f, 0.48f, 1f);
-        StretchToParent(label.rectTransform, 20f, 9f, 20f, 9f);
+        Image labelPlate = CreateReadablePlate("Clue Text Plate", chip.transform, new Color(0.02f, 0.035f, 0.026f, 0.76f));
+        labelPlate.rectTransform.SetAsFirstSibling();
+        StretchToParent(labelPlate.rectTransform, 18f, 8f, 18f, 8f);
+        label.color = ReadableLightText;
+        ConfigureReadableText(label, 10, 13);
+        StretchToParent(label.rectTransform, 28f, 10f, 28f, 10f);
         return label;
     }
 
@@ -1636,7 +2026,38 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         rectTransform.offsetMax = new Vector2(-46f, 192f);
     }
 
-    private static void ApplySprite(Image image, Sprite sprite, Color color)
+    private static Image CreateReadablePlate(string name, Transform parent, Color color)
+    {
+        Image plate = CreateImage(name, parent, color);
+        plate.raycastTarget = false;
+        return plate;
+    }
+
+    private static Transform FindNamedTransform(GameObject root, string objectName)
+    {
+        return root.GetComponentsInChildren<Transform>(true).FirstOrDefault(item => item.name == objectName);
+    }
+
+    private static T FindNamedComponent<T>(GameObject root, string objectName) where T : Component
+    {
+        return root.GetComponentsInChildren<T>(true).FirstOrDefault(item => item.name == objectName);
+    }
+
+    private static IEnumerable<T> FindRepeatedNamedComponents<T>(GameObject root, string objectName) where T : Component
+    {
+        return root.GetComponentsInChildren<T>(true).Where(item => item.name == objectName);
+    }
+
+    private static void ConfigureReadableText(Text text, int minSize, int maxSize)
+    {
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Truncate;
+        text.resizeTextForBestFit = true;
+        text.resizeTextMinSize = minSize;
+        text.resizeTextMaxSize = maxSize;
+    }
+
+    private static void ApplySprite(Image image, Sprite sprite, Color color, bool preserveAspect = true)
     {
         if (image == null || sprite == null)
         {
@@ -1646,7 +2067,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         image.sprite = sprite;
         image.color = color;
         image.type = Image.Type.Simple;
-        image.preserveAspect = false;
+        image.preserveAspect = preserveAspect;
     }
 
     private static CanvasGroup EnsureCanvasGroup(GameObject target)
@@ -1675,12 +2096,16 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private void BuildReplyControls(Transform parent, Font font)
     {
         Text heading = CreateText("Reply Heading", parent, font, "Pick A Reply", 27, FontStyle.Bold, TextAnchor.UpperLeft);
-        heading.color = new Color(0.86f, 0.96f, 0.84f, 1f);
+        heading.color = ReadableLightText;
+        ConfigureReadableText(heading, 22, 27);
         AnchorTop(heading.rectTransform, 30f, 26f, 30f, 36f);
 
+        Image helperPlate = CreateReadablePlate("Reply Helper Plate", parent, new Color(0.015f, 0.035f, 0.026f, 0.74f));
+        AnchorTop(helperPlate.rectTransform, 28f, 68f, 28f, 54f);
         decisionHelperText = CreateText("Reply Helper", parent, font, string.Empty, 17, FontStyle.Normal, TextAnchor.UpperLeft);
         decisionHelperText.color = new Color(0.72f, 0.8f, 0.76f, 1f);
-        AnchorTop(decisionHelperText.rectTransform, 30f, 72f, 30f, 48f);
+        ConfigureReadableText(decisionHelperText, 12, 16);
+        AnchorTop(decisionHelperText.rectTransform, 44f, 76f, 44f, 38f);
 
         replyButtons = new[]
         {
@@ -1699,7 +2124,15 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
 
         RectTransform rectTransform = button.GetComponent<RectTransform>();
-        AnchorTop(rectTransform, 30f, top, 30f, 82f);
+        AnchorTop(rectTransform, 58f, top, 58f, 86f);
+        Image textPlate = CreateReadablePlate("Reply Text Plate", button.transform, new Color(0.02f, 0.035f, 0.026f, 0.82f));
+        textPlate.rectTransform.SetAsFirstSibling();
+        StretchToParent(textPlate.rectTransform, 58f, 18f, 58f, 18f);
+        Text label = button.GetComponentInChildren<Text>();
+        label.color = ReadableLightText;
+        label.alignment = TextAnchor.MiddleCenter;
+        ConfigureReadableText(label, 12, 17);
+        StretchToParent(label.rectTransform, 78f, 22f, 78f, 22f);
         int capturedIndex = index;
         button.onClick.AddListener(() => SelectReply(capturedIndex));
         return button;
@@ -1783,7 +2216,8 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         button.colors = colors;
 
         Text buttonText = CreateText("Label", button.transform, font, label, fontSize, FontStyle.Bold, TextAnchor.MiddleCenter);
-        buttonText.color = useGeneratedArtAssets ? new Color(0.12f, 0.09f, 0.055f, 1f) : new Color(0.92f, 0.98f, 0.9f, 1f);
+        buttonText.color = ReadableLightText;
+        ConfigureReadableText(buttonText, 11, fontSize);
         StretchToParent(buttonText.rectTransform, 10f, 8f, 10f, 8f);
 
         return button;
