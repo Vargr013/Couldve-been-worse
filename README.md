@@ -37,7 +37,7 @@ The Unity project sends runtime HTTP requests to the local Ollama API. The main 
 - `Assets/Scripts/SignalInterceptDemoController.cs`
 - `Assets/Scripts/MissionState.cs`
 
-The game requests structured output from Ollama using labelled fields, then validates the response before showing it to the player. Validation checks include empty output, missing labels, revealed classification labels, and real-world references that should not appear in the fictional setting.
+The game requests structured output from Ollama using labelled fields, then validates the response before showing it to the player. Validation checks include empty output, unrecoverable missing structure, revealed classification labels, and real-world references that should not appear in the fictional setting. Scenario parsing also handles common local-model formatting drift such as bullets, loose labels, and source bias descriptions.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ The game requests structured output from Ollama using labelled fields, then vali
    ```
 
 3. Open the project in Unity.
-4. Open `Assets/Scenes/SampleScene.unity`.
+4. Open `Assets/Scenes/SplashScene.unity` for the full splash-to-game flow, or `Assets/Scenes/OperationGreylineVisualScene.unity` for direct UI editing.
 5. Press Play.
 6. Confirm the game can generate a scenario and intercept through the local model.
 

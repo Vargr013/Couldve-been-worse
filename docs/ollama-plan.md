@@ -91,6 +91,7 @@ Current prompt types:
 
 - `BuildScenarioPrompt`
   - Returns labelled scenario fields and three source profiles.
+  - Requests no markdown, bullets, numbering, code fences, or extra bias wording.
 - `BuildInterceptAndRepliesPrompt`
   - Uses scenario state, current values, recent consequences, selected source, clues, and hidden intent.
 - `BuildOutcomePrompt`
@@ -98,7 +99,7 @@ Current prompt types:
 - `BuildFinalReportPrompt`
   - Uses mission grade, correct decisions, risk, final situation, and consequence history.
 - Retry prompts
-  - Request exact labelled output if parsing or validation fails.
+  - Request exact labelled output if tolerant parsing or validation fails.
 
 The prompts were condensed after timeout testing. They now use compact context lines instead of long explanatory instructions.
 
@@ -113,6 +114,8 @@ PLAYER_TASK:
 SOURCE_1_CODE:
 SOURCE_1_DESC:
 ```
+
+Exact labelled output is still the preferred format. The Unity parser also normalises common local-model formatting drift, including bullets, numbering, markdown emphasis, extra spaces, and alternate label separators. If a scenario response contains the expected values in order but does not keep the labels, Unity can recover from a loose ordered scenario format and source blocks before failing validation.
 
 Intercept output uses:
 
@@ -132,7 +135,7 @@ CONSEQUENCE:
 SOURCE_NOTE:
 ```
 
-Labelled output keeps parsing simple and makes validation easier.
+Labelled output keeps parsing simple and makes validation easier. The tolerant scenario parser is a stability layer for local model inconsistency, not a replacement for the structured prompt contract.
 
 ## 7. Validation
 
@@ -141,7 +144,7 @@ Unity validates responses before displaying them.
 The game rejects:
 
 - Empty responses.
-- Missing required labels.
+- Missing required scenario content after exact and tolerant parsing.
 - Intercepts that reveal blocked labels such as `friendly`, `enemy`, `hostile`, `deception`, or `deceptive`.
 - Output that includes real-world countries, conflicts, organisations, units, or people where detectable.
 - Responses that are too malformed for the current flow.
@@ -184,7 +187,7 @@ Common failure states:
 - Ollama is not running.
 - The configured model is not installed.
 - The model request times out.
-- The model omits required labels.
+- The model omits all recoverable scenario structure.
 - The model reveals hidden classification labels.
 
 The UI reports these failures directly. The default timeout is inspector-editable and is clamped in code to support the larger scenario prompt.
@@ -198,10 +201,11 @@ The UI reports these failures directly. The default timeout is inspector-editabl
 
 ## 11. Reproducibility Notes
 
-Record these before final submission:
+Current recorded setup:
 
-- Ollama version.
-- Installed model name.
-- Unity version.
-- Test machine specifications.
-- Any model or timeout changes made in the inspector.
+- Ollama version: 0.23.2.
+- Installed model name: `llama3.1:8b`.
+- Unity version: 6000.3.9f1.
+- Test machine: 12th Gen Intel(R) Core(TM) i5-12450H, NVIDIA GeForce RTX 3060 Laptop GPU, 32 GB RAM, Windows 11 Home Single Language 10.0.26200.
+- Main playable flow: `SplashScene.unity` loads `OperationGreylineVisualScene.unity`.
+- Any later model or timeout changes made in the inspector should be recorded before final submission.

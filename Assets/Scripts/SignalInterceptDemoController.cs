@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -76,6 +77,14 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         "hostile",
         "deception",
         "deceptive"
+    };
+
+    private static readonly Regex[] InterceptMetadataLeakPatterns =
+    {
+        new(@"\b(reliable|reliability|credibility)\s*[:=;-]?\s*(low|medium|high)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[;,\n]\s*(tell|habit|agenda|motive|bias|hidden intent|source notes?)\b\s*[:=;-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"\b(source notes?|hidden intent|bias)\s*[:=;-]", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"\b(tell|agenda|motive)\s*[:=;-]", RegexOptions.IgnoreCase | RegexOptions.Compiled)
     };
 
     private static readonly string[] RealWorldReferences =
@@ -1731,6 +1740,11 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         if (InterceptBlockedLabels.Any(label => lowerResponse.Contains(label)))
         {
             throw new GeneratedTextValidationException("Ollama response revealed a blocked classification label.");
+        }
+
+        if (InterceptMetadataLeakPatterns.Any(pattern => pattern.IsMatch(response)))
+        {
+            throw new GeneratedTextValidationException("Ollama response leaked prompt/source metadata into the intercept.");
         }
     }
 

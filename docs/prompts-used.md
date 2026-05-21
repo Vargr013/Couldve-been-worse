@@ -271,6 +271,7 @@ Prompt structure:
 Fictional dark satirical intel desk game. Dry, specific, consequence-driven. No real countries, conflicts, organisations, units, or people.
 
 Create one 5-round fictional scenario. Return only these labelled lines. Keep values under 14 words. Source biases must be one Friendly, one Enemy, one Deception.
+No intro, markdown, bullets, numbering, or code fence.
 SCENARIO_TITLE:
 LOCATION:
 PLAYER_TASK:
@@ -306,12 +307,13 @@ Successful behaviour:
 
 Potential failure:
 
-- The model may omit a field or use an invalid source bias.
+- The model may omit a field, wrap labels in markdown, add bullets, or use an invalid source bias.
+- The model may provide source sections in order but ignore the exact label format.
 
 Retry prompt:
 
 ```text
-Retry: exact labels only. Fill every line.
+Retry: exact labels only. Fill every line. SOURCE_1_BIAS, SOURCE_2_BIAS, SOURCE_3_BIAS must be only Friendly, Enemy, or Deception with no extra words.
 ```
 
 ## Intercept And Reply Prompt
@@ -341,17 +343,19 @@ Successful behaviour:
 - Produces an ambiguous transmission.
 - Produces three short reply options that match the intended decision profiles.
 - Keeps the hidden classification concealed from the player.
+- Keeps source metadata such as reliability, tell, agenda, source notes, and hidden intent out of the visible transcript.
 
 Potential failure:
 
 - The model may reveal the classification.
 - The model may miss one of the option labels.
 - The model may write too much explanation.
+- The model may echo prompt metadata into the intercept, for example `reliable High` or `tell:`.
 
 Retry prompt:
 
 ```text
-Important: The previous output failed validation. Use the exact INTERCEPT / OPTION_1 / OPTION_2 / OPTION_3 format and keep every line short.
+Important: The previous output failed validation. Use the exact INTERCEPT / OPTION_1 / OPTION_2 / OPTION_3 format and keep every line short. The INTERCEPT must be only what was heard, not source metadata or notes.
 ```
 
 ## Outcome Prompt
@@ -429,4 +433,7 @@ Important: The previous final report failed validation. Return only 3 concise fi
 - Real-world reference restrictions were added to keep the game fictional and ethically safer.
 - Retry prompts were added because local model responses can be inconsistent.
 - Prompt text was later condensed after local timeout testing. The current prompts favour compact state lines over long instructional paragraphs.
+- The scenario prompt was tightened again after `llama3.1:8b` sometimes returned markdown, bullets, or source bias descriptions instead of the exact bias values.
+- The scenario parser now normalises labels and can recover from loose ordered source blocks, but exact labelled output remains the requested format.
+- Intercept validation now rejects prompt/source metadata leakage so source reliability, tells, agendas, biases, and hidden-intent notes stay off the player-facing transcript.
 - Text polish is the next planned sprint, so the archive records structure and control rather than claiming the current prose is final.

@@ -98,9 +98,9 @@ The prototype includes:
 - Generated art panels and cleaned UI sprites.
 - Typewriter intercept reveal.
 - Button motion, panel pulse, shake, and flash effects.
-- An inspector-editable visual scene for manual art and layout adjustment.
+- A full editable UGUI visual scene for manual art, text, and layout adjustment.
 
-The older procedural scanlines, labels, outlines, and stamp effects can be toggled in the inspector so they do not clash with the generated art assets.
+The older procedural scanlines, labels, outlines, and stamp effects can be toggled or removed so they do not clash with the generated art assets. The runtime controller binds to the editable hierarchy instead of replacing it with a generated fallback UI.
 
 ## 8. Design Goals
 
@@ -120,7 +120,7 @@ The current prototype focuses on one strong loop:
 - One intercept and reply choice per round.
 - Visible situation values and source notes.
 - One generated final report.
-- Runtime UGUI interface with inspector-editable visual controls.
+- Editable UGUI scene interface with inspector-editable visual controls.
 
 The next sprint will focus on text quality, sharper generated consequences, and more characterful writing.
 

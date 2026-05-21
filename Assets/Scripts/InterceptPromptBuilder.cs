@@ -47,10 +47,10 @@ public static class InterceptPromptBuilder
         return OperationContext + "\n" +
                $"Scenario: {scenario.Title}; {scenario.Location}; task {scenario.PlayerTask}; stake {scenario.Stake}; problem {scenario.Complication}; bad idea {scenario.CommandBadIdea}.\n" +
                $"State: {situationSummary}. Consequences: {consequenceSummary}. Values S{corridorStability} O{objectiveStatus} C{confusion} E{commandEmbarrassment}. Round {roundNumber}/{MissionState.RoundLimit}. Risk {riskLevel}. Patience {supervisorPatience}.\n" +
-               $"Source: {activeSource.CodeName}; {activeSource.PublicDescription}; reliable {activeSource.Reliability}; tell {activeSource.Tell}; agenda {activeSource.Agenda}; last {activeSource.LastObservedBehavior}.\n" +
+               $"Source notes for context only, do not quote these labels in the transcript: {activeSource.CodeName}; {activeSource.PublicDescription}; credibility {activeSource.Reliability}; habit {activeSource.Tell}; motive {activeSource.Agenda}; last observed {activeSource.LastObservedBehavior}.\n" +
                $"Clues: {clueSummary}. Hidden intent: {DescribeHiddenTruth(hiddenTruth)}.\n" +
                $"Write OPTION_1 as {replyOptions[0].WritingBrief}. OPTION_2 as {replyOptions[1].WritingBrief}. OPTION_3 as {replyOptions[2].WritingBrief}.\n" +
-               "Return only:\nINTERCEPT: <12-35 words, source voice, scenario detail, no labels friendly/enemy/hostile/deception/deceptive>\nOPTION_1: <under 20 words>\nOPTION_2: <under 20 words>\nOPTION_3: <under 20 words>";
+               "Return only:\nINTERCEPT: <12-35 words, in-world radio message only; no metadata labels, no reliability/tell/agenda/source/bias wording, no friendly/enemy/hostile/deception/deceptive labels>\nOPTION_1: <under 20 words>\nOPTION_2: <under 20 words>\nOPTION_3: <under 20 words>";
     }
 
     public static string BuildInterceptAndRepliesRetryPrompt(
@@ -84,7 +84,7 @@ public static class InterceptPromptBuilder
                    objectiveStatus,
                    confusion,
                    commandEmbarrassment) + "\n\n" +
-               "Important: The previous output failed validation. Use the exact INTERCEPT / OPTION_1 / OPTION_2 / OPTION_3 format and keep every line short.";
+               "Important: The previous output failed validation. Use the exact INTERCEPT / OPTION_1 / OPTION_2 / OPTION_3 format and keep every line short. The INTERCEPT must be only what was heard, not source metadata or notes.";
     }
 
     public static string BuildOutcomePrompt(

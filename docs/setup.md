@@ -85,13 +85,13 @@ Then type a short test prompt and confirm the model answers.
 1. Open Unity Hub.
 2. Add the project folder.
 3. Open the project using Unity 6000.3.9f1.
-4. Open the main playable scene:
+4. Open the splash entry scene for the normal playable flow:
 
    ```text
-   Assets/Scenes/SampleScene.unity
+   Assets/Scenes/SplashScene.unity
    ```
 
-5. For visual-direction editing, open the inspector-friendly scene:
+5. Open the editable presentation scene directly when adjusting the UI:
 
    ```text
    Assets/Scenes/OperationGreylineVisualScene.unity
@@ -101,7 +101,9 @@ Then type a short test prompt and confirm the model answers.
 
 ## 6. Run The Prototype
 
-When the scene starts, the prototype automatically asks Ollama to generate a five-round scenario. If that succeeds, continue through the loop:
+When the splash scene starts, it plays `Assets/Video/Splash - Trim.mp4` while additively loading `OperationGreylineVisualScene`. This lets the main scene begin its Ollama scenario request while the splash video is still visible.
+
+When the main scene is ready, the prototype automatically asks Ollama to generate a five-round scenario. If that succeeds, continue through the loop:
 
 1. Review the generated Operation Greyline briefing.
 2. Read the situation board and source notes.
@@ -111,7 +113,17 @@ When the scene starts, the prototype automatically asks Ollama to generate a fiv
 6. Review the consequence and updated source note.
 7. Repeat until the final report is available after round 5.
 
-The visual-direction scene exposes inspector controls for generated art, procedural labels, scanlines, outlines, stamp flashes, signal pings, supervisor accent opacity, and sprite overrides. These controls are intended for final readability tuning without code edits.
+The visual scene contains a real editable UGUI hierarchy named `Signal Intercept UI`. The panels, tab buttons, reply buttons, text fields, status line, and primary action button can be adjusted visually in Unity.
+
+The `SignalInterceptDemoController` now binds to that hierarchy at runtime. It no longer silently builds a fallback GUI if required objects are missing. If the editable UI is deleted or badly renamed, use:
+
+```text
+Tools > Signal Intercept > Rebuild Editable Scene UI
+```
+
+Decorative overlays such as scanlines, stamps, glow layers, clue labels, and supervisor-note decoration can be removed or disabled for readability. The core panels, buttons, text fields, and controller object should remain in place unless the rebuild tool is used.
+
+The visual-direction scene also exposes inspector controls for generated art, procedural labels, scanlines, outlines, stamp flashes, signal pings, supervisor accent opacity, and sprite overrides. These controls are intended for final readability tuning without code edits.
 
 ## 7. Common Issues
 
@@ -154,7 +166,27 @@ Fix options:
 
 ### Output fails validation
 
-The game rejects responses that are empty, incorrectly formatted, reveal hidden classification labels, or mention real-world conflicts, countries, organisations, or people. Press the generation button again so the retry prompt can request a cleaner response.
+The game rejects responses that are empty, reveal hidden classification labels, mention real-world conflicts, countries, organisations, or people, or are too malformed to recover. Scenario parsing now handles common local-model formatting drift such as bullets, numbering, loose labels, and source bias descriptions before it retries.
+
+If validation still fails, press the generation button again so the retry prompt can request a cleaner response.
+
+### Editable UI hierarchy is missing or incomplete
+
+Symptom:
+
+```text
+Editable Signal Intercept UI is incomplete.
+```
+
+Fix:
+
+Open `Assets/Scenes/OperationGreylineVisualScene.unity`, then run:
+
+```text
+Tools > Signal Intercept > Rebuild Editable Scene UI
+```
+
+After rebuilding, save the scene. You can then remove or adjust optional decorative overlays again, but keep the core bound UI objects.
 
 ### Generated art and old effects clash
 
@@ -169,7 +201,7 @@ Open `Assets/Scenes/OperationGreylineVisualScene.unity` and adjust the `SignalIn
 
 1. In Unity, open `File > Build Profiles`.
 2. Select the Windows build target.
-3. Confirm `Assets/Scenes/SampleScene.unity` and `Assets/Scenes/OperationGreylineVisualScene.unity` are included in the scene list.
+3. Confirm `Assets/Scenes/SplashScene.unity` is first in the scene list and `Assets/Scenes/OperationGreylineVisualScene.unity` is also included.
 4. Build the project into a folder named:
 
    ```text

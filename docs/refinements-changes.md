@@ -124,21 +124,66 @@ Reasoning:
 
 The repository documentation needs to describe the actual shipped prototype, not the earliest one-button Ollama demo.
 
+## 2026-05-21: Editable UI Scene And Runtime Binding
+
+- Converted the visual scene from a mostly runtime-generated interface into a full editable UGUI hierarchy.
+- Added the scene-level `Signal Intercept UI` layout with editable panels, tab buttons, reply buttons, status text, action button, and content text fields.
+- Updated `SignalInterceptDemoController` to bind to the editable hierarchy at runtime instead of silently rebuilding a fallback GUI.
+- Added `Tools > Signal Intercept > Rebuild Editable Scene UI` so the hierarchy can be regenerated if required.
+- Made removed decorative overlays safe by treating background glow, scanlines, stamps, supervisor note, and clue-label decoration as optional scene objects.
+- Kept the existing gameplay flow, tab behaviour, prompt calls, scoring, and mission state unchanged.
+
+Reasoning:
+
+The art-heavy runtime UI was difficult to manually correct in Unity and could become unreadable when generated art was used as a text surface. The updated scene gives the project a visible component layout that can be edited directly while still letting code own the game state.
+
+## 2026-05-21: Ollama Scenario Parsing Hardening
+
+- Tightened the scenario prompt so Ollama is asked for no markdown, bullets, numbering, code fences, or extra source-bias wording.
+- Updated retry wording to require source bias values of exactly `Friendly`, `Enemy`, and `Deception`.
+- Hardened scenario parsing so labels can include common formatting drift such as bullets, numbering, spacing, markdown emphasis, or alternate separators.
+- Added a tolerant scenario parser for ordered responses where the model provides the fields and source blocks without exact labels.
+- Allowed source classification parsing to recover from values such as `Friendly - loyal to ...` while still storing the controlled classification value.
+
+Reasoning:
+
+The local `llama3.1:8b` model sometimes followed the requested content but ignored the exact label format. The new parsing keeps exact labelled output as the preferred path, but recovers from common local-model formatting drift before treating a scenario as failed.
+
+## 2026-05-21: Splash Video Entry Scene
+
+- Added `SplashScene.unity` as the first build scene.
+- Connected `Assets/Video/Splash - Trim.mp4` to a dedicated splash controller.
+- The splash controller additively loads `OperationGreylineVisualScene` under the video so the main scene can begin its Ollama scenario request before the splash clears.
+- Added `Tools > Signal Intercept > Rebuild Splash Scene` for regenerating the editable splash scene from the editor.
+- Kept `OperationGreylineVisualScene.unity` available for direct UI editing and testing.
+
+Reasoning:
+
+Scenario generation can take several seconds on a local model. Playing the splash video while the main scene loads gives the generation process a head start and makes the opening flow feel intentional instead of waiting on a blank or half-ready UI.
+
+## 2026-05-21: Intercept Metadata Leak Guard
+
+- Updated the intercept prompt so source notes are explicitly context only.
+- Added validation that rejects prompt metadata leaking into the visible transcript, including reliability, tell, agenda, source-note, bias, and hidden-intent labels.
+- Strengthened the retry prompt so the intercept must be only what was heard, not a summary of source fields.
+
+Reasoning:
+
+The model can sometimes echo prompt context into the intercept, which exposes information the player should infer from source notes and clues. The validator now treats that as failed generation and asks Ollama for a cleaner intercept.
+
 ## Current Remaining Refinements
 
-- Record exact final Ollama model and version.
-- Record final test machine specifications.
 - Build the final Windows executable.
 - Record the technical demonstration video.
 - Record the final showcase video.
 - Confirm the GitHub repository is accessible to the marker.
 - Package documentation and final build into the Drive submission folder.
-- Improve the generated text quality in the next sprint so scenario consequences and satire feel less generic.
+- Continue improving generated text quality so scenario consequences and satire feel less generic.
 
 ## Known Limitations
 
 - The prototype depends on Ollama being installed and running locally.
 - Runtime generation speed depends on the selected model and hardware.
-- Some LLM outputs may still fail validation and require retrying.
+- Severely malformed LLM outputs may still fail validation after tolerant parsing and retry.
 - The current project is focused on a single polished gameplay loop rather than multiple levels or broad content variety.
-- The visual scene is intentionally inspector-editable because final image placement and text polish may still need manual tuning.
+- The visual scene is intentionally editable because final image placement and text polish may still need manual tuning.
