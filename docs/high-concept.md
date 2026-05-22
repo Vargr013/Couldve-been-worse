@@ -1,8 +1,8 @@
-# Signal Intercept: High Concept
+# Could've Been Worse: High Concept
 
 ## 1. High Concept
 
-Signal Intercept is a darkly satirical intelligence desk game about trying to make serious decisions from unreliable AI-generated information.
+Could've Been Worse is a darkly satirical intelligence desk game about trying to make serious decisions from unreliable AI-generated information.
 
 The player works inside Operation Greyline, a fictional border-corridor monitoring desk where Command demands confident answers from vague intercepted transmissions, recurring signal sources, and messy consequences. A locally hosted Large Language Model through Ollama generates the scenario, intercepts, reply options, outcomes, and final report during play.
 
@@ -12,7 +12,7 @@ The game is not about military realism. It is about deduction under pressure, wo
 
 Each mission is a five-round scenario generated at runtime. The player receives a fictional briefing, studies recurring signal sources, reads intercepted communications, reviews clue chips, and chooses one of three generated replies.
 
-Unlike a fixed dialogue tree, Signal Intercept uses local AI to:
+Unlike a fixed dialogue tree, Could've Been Worse uses local AI to:
 
 - Generate a concrete fictional operation scenario.
 - Create recurring signal sources with tells, agendas, and reliability patterns.
