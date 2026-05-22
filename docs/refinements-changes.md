@@ -171,15 +171,6 @@ Reasoning:
 
 The model can sometimes echo prompt context into the intercept, which exposes information the player should infer from source notes and clues. The validator now treats that as failed generation and asks Ollama for a cleaner intercept.
 
-## Current Remaining Refinements
-
-- Build the final Windows executable.
-- Record the technical demonstration video.
-- Record the final showcase video.
-- Confirm the GitHub repository is accessible to the marker.
-- Package documentation and final build into the Drive submission folder.
-- Continue improving generated text quality so scenario consequences and satire feel less generic.
-
 ## Known Limitations
 
 - The prototype depends on Ollama being installed and running locally.

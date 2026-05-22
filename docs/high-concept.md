@@ -122,7 +122,7 @@ The current prototype focuses on one strong loop:
 - One generated final report.
 - Editable UGUI scene interface with inspector-editable visual controls.
 
-The next sprint will focus on text quality, sharper generated consequences, and more characterful writing.
+Future polish could focus on sharper generated consequences and more characterful writing, but the submitted scope is the complete five-round loop described above.
 
 ## 10. Ethical Considerations
 

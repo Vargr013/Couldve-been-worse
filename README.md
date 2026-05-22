@@ -74,6 +74,15 @@ Submission documentation is stored in `docs/`:
 - `prompts-used.md`
 - `llm-integration-report.md`
 
+## Submission Evidence
+
+The repository contains the prototype project, final refined Unity scenes, source code, art assets, and written documentation. The playable Windows build and assessment videos are submitted as external packaged files:
+
+- Prototype evidence: the live Ollama-driven Unity project in this repository.
+- Final build: Windows build packaged from `Assets/Scenes/SplashScene.unity` and `Assets/Scenes/OperationGreylineVisualScene.unity`.
+- Technical demonstration video: 3-6 minute recording showing Ollama running locally and explaining the Unity integration.
+- Final showcase video: 3-6 minute recording showing the gameplay flow, visual improvements, and design intent.
+
 ## AI Tools Used
 
 AI tools were used to support planning, code drafting, debugging, prompt design, and documentation. The submitted prototype is still manually reviewed, adapted, and integrated into Unity. Ollama and `llama3.1:8b` are the required local language model setup, with runtime output used directly by the gameplay system.

@@ -195,7 +195,7 @@ The UI reports these failures directly. The default timeout is inspector-editabl
 ## 10. Current Limitations
 
 - Local inference speed depends on the machine and model.
-- Text quality can still feel generic; text refinement is planned for the next sprint.
+- Text quality can still feel generic, so sharper generated satire is a future polish area.
 - Validation cannot catch every possible real-world reference.
 - The current build focuses on one five-round loop, not multiple campaign branches.
 

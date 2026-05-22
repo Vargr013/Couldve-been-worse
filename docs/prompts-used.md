@@ -436,4 +436,4 @@ Important: The previous final report failed validation. Return only 3 concise fi
 - The scenario prompt was tightened again after `llama3.1:8b` sometimes returned markdown, bullets, or source bias descriptions instead of the exact bias values.
 - The scenario parser now normalises labels and can recover from loose ordered source blocks, but exact labelled output remains the requested format.
 - Intercept validation now rejects prompt/source metadata leakage so source reliability, tells, agendas, biases, and hidden-intent notes stay off the player-facing transcript.
-- Text polish is the next planned sprint, so the archive records structure and control rather than claiming the current prose is final.
+- Text polish remains a future improvement area, so the archive records structure and control rather than claiming every generated line will be equally strong.

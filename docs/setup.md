@@ -197,28 +197,19 @@ Open `Assets/Scenes/OperationGreylineVisualScene.unity` and adjust the `SignalIn
 - Override any sprite slot manually.
 - Keep the generated art asset loading enabled unless testing a pure procedural UI.
 
-## 8. Building The Final Playable Version
 
-1. In Unity, open `File > Build Profiles`.
-2. Select the Windows build target.
-3. Confirm `Assets/Scenes/SplashScene.unity` is first in the scene list and `Assets/Scenes/OperationGreylineVisualScene.unity` is also included.
-4. Build the project into a folder named:
-
-   ```text
-   SignalIntercept_FinalBuild
-   ```
-
-5. Zip the final build folder for submission.
-6. Before recording or submitting, run the executable while Ollama is active and confirm it can generate a scenario and at least one intercept.
-
-## 9. Submission Notes
+## 8. Submission Notes
 
 The final submission includes:
 
 - Zipped Unity project folder
 - GitHub repository link
+- Prototype evidence from the Unity project
 - Final playable Windows build
 - Technical demonstration video
 - Final showcase video
 - All documentation in the `docs` folder
 - LLM integration report
+- Prompt archive in `docs/prompts-used.md`
+
+The two recorded assessment videos and the final Windows build are external submission assets.
