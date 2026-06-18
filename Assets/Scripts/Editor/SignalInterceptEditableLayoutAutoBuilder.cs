@@ -12,7 +12,7 @@ public static class SignalInterceptEditableLayoutAutoBuilder
         EditorApplication.delayCall += EnsureEditableLayoutExists;
     }
 
-    [MenuItem("Tools/Signal Intercept/Rebuild Editable Scene UI")]
+    [MenuItem("Tools/Could've Been Worse/Rebuild Editable Scene UI")]
     private static void RebuildEditableLayoutFromMenu()
     {
         RebuildEditableLayout(true);
@@ -33,7 +33,7 @@ public static class SignalInterceptEditableLayoutAutoBuilder
         }
 
         Scene scene = SceneManager.GetActiveScene();
-        if (scene.name != "OperationGreylineVisualScene" || GameObject.Find("Signal Intercept UI") != null)
+        if (scene.name != "OperationGreylineVisualScene" || GameObject.Find("Could've Been Worse UI") != null)
         {
             return;
         }
@@ -54,7 +54,7 @@ public static class SignalInterceptEditableLayoutAutoBuilder
             return;
         }
 
-        if (!force && GameObject.Find("Signal Intercept UI") != null)
+        if (!force && GameObject.Find("Could've Been Worse UI") != null)
         {
             return;
         }
@@ -65,12 +65,12 @@ public static class SignalInterceptEditableLayoutAutoBuilder
 
         if (rebuildMethod == null)
         {
-            Debug.LogWarning("Signal Intercept editable UI rebuild method was not found.");
+            Debug.LogWarning("Could've Been Worse editable UI rebuild method was not found.");
             return;
         }
 
         rebuildMethod.Invoke(controller, null);
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-        Debug.Log("Signal Intercept editable scene UI was rebuilt. Save the scene to keep the visual layout.");
+        Debug.Log("Could've Been Worse editable scene UI was rebuilt. Save the scene to keep the visual layout.");
     }
 }

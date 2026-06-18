@@ -1,8 +1,8 @@
-# Signal Intercept: Ollama Integration Plan
+# Could've Been Worse: Ollama Integration Plan
 
 ## 1. Purpose
 
-Signal Intercept uses a locally hosted Large Language Model through Ollama as a live gameplay system. The model generates fictional operation content during play, while Unity controls the rules and state.
+Could've Been Worse uses a locally hosted Large Language Model through Ollama as a live gameplay system. The model generates fictional operation content during play, while Unity controls the rules and state.
 
 The current implementation uses Ollama for:
 

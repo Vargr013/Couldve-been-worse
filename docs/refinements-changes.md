@@ -1,8 +1,64 @@
-# Signal Intercept: Refinements And Changes Log
+# Could've Been Worse: Refinements And Changes Log
 
 This document records the main scope changes, design refinements, and AI-assisted decisions made during development.
 
-## 2026-05-07: Initial Prototype Direction
+## 2026-06-18: Feedback-Driven Refinements (Post-Playtest)
+
+Feedback was collected at the Joburg Game Dev Meetup on 11 June 2026 from two playtesters (a hobbyist and an indie developer) and the academic assessor. Three feedback items were selected for implementation based on feasibility, impact, and alignment with the project's design goals.
+
+See `feedback-summary.md` and `critical-feedback.md` for the full feedback record and engagement analysis.
+
+### Softlock Bug: Report Button Locks Player Out of Replies (F11)
+
+**Reported:** Clicking the report/Mission Log button before selecting a reply permanently locks the player out of reply selection.
+
+**Root cause identified:** After `StartNextRound()` incremented the round counter for the fifth and final round, `MissionState.IsComplete` evaluated to `true` before the player had selected a reply. If any code path re-enabled the primary action button or if the visual state drifted, the player could lose reply access. The primary action button text would prematurely show "Generate Final Report" despite a pending reply.
+
+**Fix implemented in `MissionState.cs`:**
+- Added `HasPendingReply` boolean property.
+- Set `HasPendingReply = true` in `StartNextRound()`.
+- Set `HasPendingReply = false` in `ResolveReply()`, `Reset()`, and `SetScenario()`.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- `GenerateIntercept()` now checks `missionState.HasPendingReply` as an additional guard before processing, redirecting to the Decision tab if a reply is still pending.
+- `GenerateFinalReport()` now checks `missionState.HasPendingReply` before executing, redirecting to the Decision tab if a reply is pending.
+- `HandlePrimaryAction()` adds a top-level guard: if the primary action mode is `GenerateFinalReport` but the visual state is still `AwaitingReply`, the player is redirected to the Decision tab.
+
+**Outcome:** The player can no longer accidentally bypass the reply phase. The primary action button and Mission Log tab can be clicked freely without risk of softlock.
+
+### Report Screen Background Clutter (F2)
+
+**Reported:** The hobbyist playtester had difficulty reading the mission log text because the background behind it was too visually cluttered.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- Added `EnhanceMissionLogReadability()` method, called during scene layout binding to improve the Mission Log panel's text readability regardless of which background sprite is applied.
+- The method locates any existing readability plate behind the mission log text (by naming convention) and increases its opacity to 84% with a dark, high-contrast colour (`0.07, 0.09, 0.07`).
+- If no plate exists, one is created dynamically behind the text with matching dimensions plus 10px padding, serving as a solid dark backing for improved contrast.
+- The plate is inserted as the first sibling so it renders behind the text.
+
+**Outcome:** Mission log text is now readable against busy or patterned panel backgrounds. The fix is non-destructive — it enhances existing plates or adds one, and respects any existing scene hierarchy.
+
+### Text Clipping in Report and Intercept Displays (F3)
+
+**Reported:** Text occasionally clipped or overflowed beyond its container, cutting off content mid-sentence.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- `EnhanceMissionLogReadability()` also reconfigures the mission log text component: `verticalOverflow` is changed from `VerticalWrapMode.Truncate` to `VerticalWrapMode.Overflow`, allowing the full text to render even if it exceeds the container height.
+- Font size range tightened to 11–16 (from 13–17) to allow more text to fit within the same area via `resizeTextForBestFit`.
+
+**Limitation acknowledged:** The editable UGUI scene layout provides fixed-height text containers. Switching to `Overflow` mode means text may visually extend beyond the container edge. A full ScrollRect implementation would require scene-level changes and is deferred as a future UX polish item. The current fix prioritises content completeness over visual neatness for assessment purposes.
+
+**Outcome:** No mission log text is truncated. The player can read all logged consequences and outcomes without missing content. For intercept text (which uses the TypewriterTextEffect), the larger transmission text container already provides adequate space.
+
+### Documentation Updates
+
+- `feedback-summary.md` created: structured record of all feedback with aspect mapping, recurring themes, and initial reactions.
+- `critical-feedback.md` created: analytical engagement with feedback including expectations, surprises, declined items with feasibility justification, and final judgement.
+- `evidence-attendance.md` created: event description, photo reference, attendee notes, and identification of feedback providers.
+- This file updated to record feedback-driven code changes.
+- `README.md` updated to reference the new feedback documentation.
+
+---
 
 - Created the Unity project for a standalone GADS7331 POE Part 2 prototype.
 - Chose a text-focused intelligence desk simulation instead of a larger action game.
@@ -127,9 +183,9 @@ The repository documentation needs to describe the actual shipped prototype, not
 ## 2026-05-21: Editable UI Scene And Runtime Binding
 
 - Converted the visual scene from a mostly runtime-generated interface into a full editable UGUI hierarchy.
-- Added the scene-level `Signal Intercept UI` layout with editable panels, tab buttons, reply buttons, status text, action button, and content text fields.
+- Added the scene-level `Could've Been Worse UI` layout with editable panels, tab buttons, reply buttons, status text, action button, and content text fields.
 - Updated `SignalInterceptDemoController` to bind to the editable hierarchy at runtime instead of silently rebuilding a fallback GUI.
-- Added `Tools > Signal Intercept > Rebuild Editable Scene UI` so the hierarchy can be regenerated if required.
+- Added `Tools > Could've Been Worse > Rebuild Editable Scene UI` so the hierarchy can be regenerated if required.
 - Made removed decorative overlays safe by treating background glow, scanlines, stamps, supervisor note, and clue-label decoration as optional scene objects.
 - Kept the existing gameplay flow, tab behaviour, prompt calls, scoring, and mission state unchanged.
 
@@ -154,7 +210,7 @@ The local `llama3.1:8b` model sometimes followed the requested content but ignor
 - Added `SplashScene.unity` as the first build scene.
 - Connected `Assets/Video/Splash - Trim.mp4` to a dedicated splash controller.
 - The splash controller additively loads `OperationGreylineVisualScene` under the video so the main scene can begin its Ollama scenario request before the splash clears.
-- Added `Tools > Signal Intercept > Rebuild Splash Scene` for regenerating the editable splash scene from the editor.
+- Added `Tools > Could've Been Worse > Rebuild Splash Scene` for regenerating the editable splash scene from the editor.
 - Kept `OperationGreylineVisualScene.unity` available for direct UI editing and testing.
 
 Reasoning:

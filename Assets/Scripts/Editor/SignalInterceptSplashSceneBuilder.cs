@@ -14,7 +14,7 @@ public static class SignalInterceptSplashSceneBuilder
     private const string TargetScenePath = "Assets/Scenes/OperationGreylineVisualScene.unity";
     private const string SplashVideoPath = "Assets/Video/Splash - Trim.mp4";
 
-    [MenuItem("Tools/Signal Intercept/Rebuild Splash Scene")]
+    [MenuItem("Tools/Could've Been Worse/Rebuild Splash Scene")]
     public static void RebuildSplashScene()
     {
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);

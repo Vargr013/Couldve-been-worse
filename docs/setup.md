@@ -1,6 +1,6 @@
-# Signal Intercept: Setup Guide
+# Could've Been Worse: Setup Guide
 
-This guide explains how to run the Signal Intercept prototype and reproduce the local Ollama integration.
+This guide explains how to run the Could've Been Worse prototype and reproduce the local Ollama integration.
 
 ## 1. System Requirements
 
@@ -113,12 +113,12 @@ When the main scene is ready, the prototype automatically asks Ollama to generat
 6. Review the consequence and updated source note.
 7. Repeat until the final report is available after round 5.
 
-The visual scene contains a real editable UGUI hierarchy named `Signal Intercept UI`. The panels, tab buttons, reply buttons, text fields, status line, and primary action button can be adjusted visually in Unity.
+The visual scene contains a real editable UGUI hierarchy named `Could've Been Worse UI`. The panels, tab buttons, reply buttons, text fields, status line, and primary action button can be adjusted visually in Unity.
 
 The `SignalInterceptDemoController` now binds to that hierarchy at runtime. It no longer silently builds a fallback GUI if required objects are missing. If the editable UI is deleted or badly renamed, use:
 
 ```text
-Tools > Signal Intercept > Rebuild Editable Scene UI
+Tools > Could've Been Worse > Rebuild Editable Scene UI
 ```
 
 Decorative overlays such as scanlines, stamps, glow layers, clue labels, and supervisor-note decoration can be removed or disabled for readability. The core panels, buttons, text fields, and controller object should remain in place unless the rebuild tool is used.
@@ -175,7 +175,7 @@ If validation still fails, press the generation button again so the retry prompt
 Symptom:
 
 ```text
-Editable Signal Intercept UI is incomplete.
+Editable Could've Been Worse UI is incomplete.
 ```
 
 Fix:
@@ -183,7 +183,7 @@ Fix:
 Open `Assets/Scenes/OperationGreylineVisualScene.unity`, then run:
 
 ```text
-Tools > Signal Intercept > Rebuild Editable Scene UI
+Tools > Could've Been Worse > Rebuild Editable Scene UI
 ```
 
 After rebuilding, save the scene. You can then remove or adjust optional decorative overlays again, but keep the core bound UI objects.

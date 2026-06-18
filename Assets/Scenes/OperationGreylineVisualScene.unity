@@ -1624,7 +1624,7 @@ GameObject:
   - component: {fileID: 1006273544}
   - component: {fileID: 1006273543}
   m_Layer: 0
-  m_Name: Signal Intercept UI
+  m_Name: Could've Been Worse UI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2454,7 +2454,7 @@ GameObject:
   - component: {fileID: 1350000001}
   - component: {fileID: 1350000002}
   m_Layer: 0
-  m_Name: Signal Intercept Demo
+  m_Name: Could've Been Worse Demo
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3855,7 +3855,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Signal Intercept
+  m_Text: Could've Been Worse
 --- !u!222 &1973210184
 CanvasRenderer:
   m_ObjectHideFlags: 0

@@ -135,6 +135,7 @@ public sealed class MissionState
     public string LatestConsequence { get; private set; } = string.Empty;
     public bool HasScenario => Scenario != null;
     public bool IsComplete => HasScenario && RoundNumber >= RoundLimit;
+    public bool HasPendingReply { get; private set; }
     public IReadOnlyList<string> Consequences => consequences;
     public IReadOnlyList<EvidenceClue> CurrentClues => currentClues;
     public MissionGrade Grade => CalculateGrade();
@@ -160,6 +161,7 @@ public sealed class MissionState
         LatestConsequence = string.Empty;
         consequences.Clear();
         currentClues.Clear();
+        HasPendingReply = false;
     }
 
     public void SetScenario(ScenarioBrief scenario)
@@ -179,6 +181,7 @@ public sealed class MissionState
         LatestConsequence = "No consequences yet. Command is treating this as proof of good planning.";
         consequences.Clear();
         currentClues.Clear();
+        HasPendingReply = false;
     }
 
     public void StartNextRound(InterceptClassification hiddenTruth, SignalSourceProfile source, IEnumerable<EvidenceClue> clues)
@@ -189,6 +192,7 @@ public sealed class MissionState
         CurrentIntercept = string.Empty;
         currentClues.Clear();
         currentClues.AddRange(clues);
+        HasPendingReply = true;
     }
 
     public void SetCurrentIntercept(string intercept)
@@ -198,6 +202,7 @@ public sealed class MissionState
 
     public DecisionResult ResolveReply(GeneratedReplyOption option)
     {
+        HasPendingReply = false;
         bool wasCorrect = option.Classification == CurrentHiddenTruth;
         int previousRisk = RiskLevel;
         int previousPatience = SupervisorPatience;

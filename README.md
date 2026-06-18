@@ -1,8 +1,8 @@
-# Signal Intercept
+# Could've Been Worse
 
-Signal Intercept is a Unity prototype for GADS7331 POE Part 2. The project is a fictional intelligence desk simulation where the player reads AI-generated intercepted messages, studies clue chips, chooses a reply, and manages the consequences across a short five-round scenario.
+Could've Been Worse is a Unity prototype for GADS7331 POE Part 2. The project is a fictional intelligence desk simulation where the player reads AI-generated intercepted messages, studies clue chips, chooses a reply, and manages the consequences across a short five-round scenario.
 
-The main assessment focus is the local Large Language Model integration. Signal Intercept uses Ollama through a local HTTP endpoint so the prototype can generate scenario briefs, intercepts, reply options, consequences, and a final report while the game is running.
+The main assessment focus is the local Large Language Model integration. Could've Been Worse uses Ollama through a local HTTP endpoint so the prototype can generate scenario briefs, intercepts, reply options, consequences, and a final report while the game is running.
 
 ## Project Details
 
@@ -73,6 +73,10 @@ Submission documentation is stored in `docs/`:
 - `refinements-changes.md`
 - `prompts-used.md`
 - `llm-integration-report.md`
+- `feedback-summary.md`
+- `critical-feedback.md`
+- `evidence-attendance.md`
+- `final-reflection.md`
 
 ## Submission Evidence
 

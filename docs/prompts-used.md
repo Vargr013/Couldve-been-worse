@@ -1,4 +1,4 @@
-# Signal Intercept: Prompt Archive
+# Could've Been Worse: Prompt Archive
 
 This document records the main prompt structures used in the prototype, including successful prompts, retry prompts, and prompt design notes.
 

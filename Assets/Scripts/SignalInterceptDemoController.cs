@@ -161,7 +161,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     {
         LoadGeneratedArtAssets();
 
-        GameObject existingRoot = GameObject.Find("Signal Intercept UI");
+        GameObject existingRoot = GameObject.Find("Could've Been Worse UI");
         if (existingRoot != null)
         {
             DestroyImmediate(existingRoot);
@@ -178,10 +178,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private bool TryBindEditableSceneLayout()
     {
-        GameObject root = GameObject.Find("Signal Intercept UI");
+        GameObject root = GameObject.Find("Could've Been Worse UI");
         if (root == null)
         {
-            Debug.LogError("Signal Intercept UI scene hierarchy is missing. Rebuild it from Tools > Signal Intercept > Rebuild Editable Scene UI.");
+            Debug.LogError("Could've Been Worse UI scene hierarchy is missing. Rebuild it from Tools > Could've Been Worse > Rebuild Editable Scene UI.");
             return false;
         }
 
@@ -189,7 +189,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         Canvas canvas = root.GetComponent<Canvas>();
         if (canvas == null)
         {
-            Debug.LogError("Signal Intercept UI exists but is missing its Canvas component.");
+            Debug.LogError("Could've Been Worse UI exists but is missing its Canvas component.");
             return false;
         }
 
@@ -230,13 +230,15 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             FindNamedComponent<Button>(root, "Reply Option 3")
         };
 
+        EnhanceMissionLogReadability();
+
         if (briefingPanel == null || interceptPanel == null || decisionPanel == null || logPanel == null ||
             briefingText == null || statsText == null || statusText == null || transmissionText == null || decisionHelperText == null ||
             missionLogText == null || signalStateText == null || generateButton == null ||
             interceptPanelRect == null ||
             tabButtons.Any(button => button == null) || replyButtons.Any(button => button == null))
         {
-            Debug.LogError("Editable Signal Intercept UI is missing required gameplay controls or text fields. Decorative overlays can be removed, but the main panels, tab buttons, reply buttons, and core text objects must stay named.");
+            Debug.LogError("Editable Could've Been Worse UI is missing required gameplay controls or text fields. Decorative overlays can be removed, but the main panels, tab buttons, reply buttons, and core text objects must stay named.");
             return false;
         }
 
@@ -363,6 +365,13 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private void HandlePrimaryAction()
     {
+        if (primaryActionMode == PrimaryActionMode.GenerateFinalReport && visualState == VisualState.AwaitingReply)
+        {
+            statusText.text = "A reply is still pending. Choose a reply before generating the final report.";
+            ShowTab(DeskTab.Decision);
+            return;
+        }
+
         switch (primaryActionMode)
         {
             case PrimaryActionMode.GenerateScenario:
@@ -447,6 +456,13 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             SetPrimaryAction(PrimaryActionMode.GenerateFinalReport);
             statusText.text = "Five rounds are complete. Generate the final report before starting a new scenario.";
             ShowTab(DeskTab.MissionLog);
+            return;
+        }
+
+        if (missionState.HasPendingReply)
+        {
+            statusText.text = "A reply is still pending. Choose a reply before requesting the next intercept.";
+            ShowTab(DeskTab.Decision);
             return;
         }
 
@@ -620,6 +636,13 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         {
             SetPrimaryAction(PrimaryActionMode.GenerateScenario);
             statusText.text = "No scenario is loaded.";
+            return;
+        }
+
+        if (missionState.HasPendingReply)
+        {
+            statusText.text = "A reply is still pending. Choose a reply before generating the final report.";
+            ShowTab(DeskTab.Decision);
             return;
         }
 
@@ -1831,7 +1854,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             BuildScanlines(canvas.transform);
         }
 
-        Text title = CreateText("Title", canvas.transform, font, "Signal Intercept", 34, FontStyle.Bold, TextAnchor.UpperLeft);
+        Text title = CreateText("Title", canvas.transform, font, "Could've Been Worse", 34, FontStyle.Bold, TextAnchor.UpperLeft);
         title.color = new Color(0.88f, 0.96f, 0.84f, 1f);
         AnchorTop(title.rectTransform, 34f, 18f, 690f, 44f);
 
@@ -2168,7 +2191,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private static Canvas CreateCanvas()
     {
-        var canvasObject = new GameObject("Signal Intercept UI", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        var canvasObject = new GameObject("Could've Been Worse UI", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas = canvasObject.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
@@ -2246,6 +2269,45 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         var eventSystem = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
         eventSystem.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
+    }
+
+    private void EnhanceMissionLogReadability()
+    {
+        if (missionLogText == null)
+        {
+            return;
+        }
+
+        missionLogText.verticalOverflow = VerticalWrapMode.Overflow;
+        missionLogText.resizeTextForBestFit = true;
+        missionLogText.resizeTextMinSize = 11;
+        missionLogText.resizeTextMaxSize = 16;
+
+        Transform parent = missionLogText.transform.parent;
+        if (parent == null)
+        {
+            return;
+        }
+
+        Image existingPlate = parent.GetComponentsInChildren<Image>(true)
+            .FirstOrDefault(img => img.name.Contains("Plate") && img.transform != missionLogText.transform);
+
+        if (existingPlate != null)
+        {
+            existingPlate.color = new Color(0.07f, 0.09f, 0.07f, 0.84f);
+        }
+        else
+        {
+            Image plate = CreateImage("Mission Log Readability Plate", parent, new Color(0.07f, 0.09f, 0.07f, 0.84f));
+            plate.raycastTarget = false;
+            RectTransform plateRect = plate.rectTransform;
+            RectTransform textRect = missionLogText.rectTransform;
+            plateRect.anchorMin = textRect.anchorMin;
+            plateRect.anchorMax = textRect.anchorMax;
+            plateRect.offsetMin = textRect.offsetMin - new Vector2(10f, 10f);
+            plateRect.offsetMax = textRect.offsetMax + new Vector2(10f, 10f);
+            plateRect.SetAsFirstSibling();
+        }
     }
 
     private static void StretchToParent(RectTransform rectTransform, float left, float top, float right, float bottom)
