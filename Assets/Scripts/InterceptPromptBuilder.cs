@@ -111,13 +111,13 @@ public static class InterceptPromptBuilder
                $"Round history: {narrativeRecap}\n" +
                $"Before: {situationSummary}. Consequences: {consequenceSummary}. Source {activeSource.CodeName}, tell {activeSource.Tell}, last {activeSource.LastObservedBehavior}. Clues {clueSummary}.\n" +
                $"Intercept \"{intercept}\". Player \"{selectedReply.Text}\". Choice meaning {DescribeHiddenTruth(selectedReply.Classification)} / {selectedReply.Action}. Correct {decisionResult.WasCorrect}. Values S{corridorStability} O{objectiveStatus} C{confusion} E{commandEmbarrassment}.\n" +
-               "Return only:\nOUTCOME: <2 short sentences, concrete consequence plus dry supervisor comment>\nSITUATION: <one sentence updated landscape>\nCONSEQUENCE: <short board consequence>\nSOURCE_NOTE: <short source note>";
+                "Return only:\nOUTCOME: <2 short sentences, concrete consequence plus dry supervisor comment>\nSITUATION: <one sentence updated landscape>\nCONSEQUENCE: <short board consequence>\nSOURCE_NOTE: <short source note>\nSUPERVISOR_REMARK: <one dry comedic supervisor one-liner, max 12 words>";
     }
 
     public static string BuildOutcomeRetryPrompt(string previousPrompt)
     {
         return previousPrompt + "\n\n" +
-               "Retry: exact OUTCOME, SITUATION, CONSEQUENCE, SOURCE_NOTE labels only.";
+                "Retry: exact OUTCOME, SITUATION, CONSEQUENCE, SOURCE_NOTE, SUPERVISOR_REMARK labels only.";
     }
 
     public static string BuildFinalReportPrompt(

@@ -136,6 +136,7 @@ public sealed class MissionState
     public bool HasScenario => Scenario != null;
     public bool IsComplete => HasScenario && RoundNumber >= RoundLimit;
     public bool HasPendingReply { get; private set; }
+    public string LatestSupervisorRemark { get; set; } = string.Empty;
     public IReadOnlyList<string> Consequences => consequences;
     public IReadOnlyList<EvidenceClue> CurrentClues => currentClues;
     public MissionGrade Grade => CalculateGrade();
@@ -160,6 +161,7 @@ public sealed class MissionState
         CurrentSource = null;
         SituationSummary = string.Empty;
         LatestConsequence = string.Empty;
+        LatestSupervisorRemark = string.Empty;
         consequences.Clear();
         currentClues.Clear();
         roundHistory.Clear();
@@ -181,6 +183,7 @@ public sealed class MissionState
         CurrentSource = null;
         SituationSummary = scenario.RoundGoal;
         LatestConsequence = "No consequences yet. Command is treating this as proof of good planning.";
+        LatestSupervisorRemark = string.Empty;
         consequences.Clear();
         currentClues.Clear();
         roundHistory.Clear();
@@ -245,6 +248,10 @@ public sealed class MissionState
         SituationSummary = outcome.Situation;
         LatestConsequence = outcome.Consequence;
         CurrentSource?.SetLastObservedBehavior(outcome.SourceNote);
+        if (!string.IsNullOrWhiteSpace(outcome.SupervisorRemark))
+        {
+            LatestSupervisorRemark = outcome.SupervisorRemark;
+        }
 
         if (!string.IsNullOrWhiteSpace(outcome.Consequence))
         {
@@ -354,18 +361,20 @@ public sealed class ScenarioBrief
 
 public sealed class GeneratedOutcomePackage
 {
-    public GeneratedOutcomePackage(string outcome, string situation, string consequence, string sourceNote)
+    public GeneratedOutcomePackage(string outcome, string situation, string consequence, string sourceNote, string supervisorRemark = "")
     {
         Outcome = outcome;
         Situation = situation;
         Consequence = consequence;
         SourceNote = sourceNote;
+        SupervisorRemark = supervisorRemark;
     }
 
     public string Outcome { get; }
     public string Situation { get; }
     public string Consequence { get; }
     public string SourceNote { get; }
+    public string SupervisorRemark { get; }
 }
 
 public readonly struct DecisionResult

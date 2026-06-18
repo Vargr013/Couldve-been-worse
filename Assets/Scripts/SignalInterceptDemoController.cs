@@ -115,6 +115,42 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         "america"
     };
 
+    private static readonly string[] SuperiorCorrectRemarks =
+    {
+        "Suspiciously competent. Document this before it becomes a meeting.",
+        "That worked. I am genuinely unsettled.",
+        "Correct. HR will still find a way to blame you.",
+        "Well judged. The corridor exhales, probably.",
+        "One point for competence. Don't expect a parade."
+    };
+
+    private static readonly string[] SuperiorWrongRemarks =
+    {
+        "The corridor has questions, and so do I.",
+        "Command expected nothing, and you delivered exactly that.",
+        "I am not angry. Just professionally disappointed.",
+        "That will become someone else's problem shortly.",
+        "Noted. Filed. Denied. In that order."
+    };
+
+    private static readonly string[] SuperiorNeutralRemarks =
+    {
+        "Proceed, but make it look like someone approved this.",
+        "At this point I am supervising the concept of supervision.",
+        "The stamp says APPROVED. The font says 'regret.'",
+        "Your desk. Your consequences. My popcorn.",
+        "Filing under 'decisions that existed.'"
+    };
+
+    private static readonly string[] SuperiorFinalRemarks =
+    {
+        "The operation is over. The paperwork is just beginning.",
+        "Debrief complete. Blame distribution to follow.",
+        "Mission concluded. Coffee is now medically advised.",
+        "File closed. The corridor will remember.",
+        "Final report filed. Let us never speak of this again."
+    };
+
     private readonly MissionState missionState = new();
 
     private GameObject briefingPanel;
@@ -336,7 +372,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         ApplyClueChips(Array.Empty<EvidenceClue>());
         if (supervisorNoteText != null)
         {
-            supervisorNoteText.text = "Supervisor note: \"Try not to make the corridor worse before coffee.\"";
+            supervisorNoteText.text = "\"Try not to make the corridor worse before coffee.\"";
         }
         string modelSummary = HasCustomModels()
             ? $"Models: Scn={ResolveModel(scenarioModelName)} Int={ResolveModel(interceptModelName)} Out={ResolveModel(outcomeModelName)} Rpt={ResolveModel(reportModelName)}"
@@ -732,10 +768,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
                 missionState.ObjectiveStatus,
                 missionState.Confusion,
                 missionState.CommandEmbarrassment);
-            string report = await RequestValidText(client, prompt, InterceptPromptBuilder.BuildFinalReportRetryPrompt(prompt), ValidateOutcome, requestCancellation.Token);
+            await RequestValidText(client, prompt, InterceptPromptBuilder.BuildFinalReportRetryPrompt(prompt), ValidateOutcome, requestCancellation.Token);
 
             RefreshSituationBoard();
-            AppendMissionLog($"FINAL REPORT - {FormatMissionGrade(missionState.Grade)}\n" + report);
+            AppendMissionLog($"FINAL — {FormatMissionGrade(missionState.Grade)}\n\"{PickFinalRemark(missionState.Grade)}\"");
             statusText.text = "Final report generated. A new scenario can now be loaded.";
             SetPrimaryAction(PrimaryActionMode.NewScenario);
             FlashStamp("CLOSED-ish", new Color(1f, 0.74f, 0.2f, 1f));
@@ -1081,9 +1117,11 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private string BuildDecisionSummary(GeneratedReplyOption selectedReply, DecisionResult result, string outcome)
     {
-        string assessment = result.WasCorrect ? "The reply somehow helped" : "The reply made the corridor more interesting";
-        string source = missionState.CurrentSource == null ? "Unknown source" : missionState.CurrentSource.CodeName;
-        return $"Round {missionState.RoundNumber}: {assessment}.\nSource: {source}\nClues: {missionState.BuildClueSummary()}\nYou chose: \"{selectedReply.Text}\"\n{outcome}";
+        string status = result.WasCorrect ? "CORRECT" : "WRONG";
+        string remark = string.IsNullOrWhiteSpace(missionState.LatestSupervisorRemark)
+            ? PickFallbackRemark(result.WasCorrect, missionState.SupervisorPatience)
+            : missionState.LatestSupervisorRemark;
+        return $"Round {missionState.RoundNumber}: {status}\n\"{remark}\"";
     }
 
     private string BuildOllamaFailureMessage(Exception exception, string failingModel)
@@ -1325,13 +1363,52 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private string BuildSupervisorNote()
     {
+        if (!string.IsNullOrWhiteSpace(missionState.LatestSupervisorRemark))
+        {
+            return missionState.LatestSupervisorRemark;
+        }
+
         return missionState.SupervisorPatience switch
         {
-            <= 0 => "Supervisor note: \"At this point I am supervising the concept of supervision.\"",
-            <= 2 => "Supervisor note: \"The corridor has questions, and so do I.\"",
-            >= MissionState.MaxSupervisorPatience => "Supervisor note: \"Suspiciously competent. Document this before it becomes a meeting.\"",
-            _ => "Supervisor note: \"Proceed, but make it look like someone approved this.\""
+            <= 0 => "\"At this point I am supervising the concept of supervision.\"",
+            <= 2 => "\"The corridor has questions, and so do I.\"",
+            >= MissionState.MaxSupervisorPatience => "\"Suspiciously competent. Document this before it becomes a meeting.\"",
+            _ => "\"Proceed, but make it look like someone approved this.\""
         };
+    }
+
+    private static string PickFallbackRemark(bool wasCorrect, int patience)
+    {
+        string[] pool;
+        if (patience <= 0)
+        {
+            pool = SuperiorNeutralRemarks;
+        }
+        else if (wasCorrect)
+        {
+            pool = patience >= MissionState.MaxSupervisorPatience
+                ? SuperiorCorrectRemarks.Concat(SuperiorNeutralRemarks).ToArray()
+                : SuperiorCorrectRemarks;
+        }
+        else
+        {
+            pool = SuperiorWrongRemarks;
+        }
+
+        int hash = Math.Abs(Environment.TickCount + patience * 7);
+        return pool[hash % pool.Length];
+    }
+
+    private static string PickFinalRemark(MissionGrade grade)
+    {
+        int index = grade switch
+        {
+            MissionGrade.Contained => 0,
+            MissionGrade.MessySuccess => 1,
+            MissionGrade.OperationalFarce => 2,
+            _ => 3
+        };
+        return SuperiorFinalRemarks[index % SuperiorFinalRemarks.Length];
     }
 
     private static GeneratedReplyOption[] BuildReplyOptions(InterceptClassification hiddenTruth)
@@ -1668,7 +1745,8 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             ReadRequiredField(fields, "OUTCOME"),
             ReadRequiredField(fields, "SITUATION"),
             ReadRequiredField(fields, "CONSEQUENCE"),
-            ReadRequiredField(fields, "SOURCE_NOTE"));
+            ReadRequiredField(fields, "SOURCE_NOTE"),
+            ReadOptionalField(fields, "SUPERVISOR_REMARK"));
     }
 
     private static Dictionary<string, string> ReadLabelledFields(string response)
@@ -1698,6 +1776,17 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         if (!fields.TryGetValue(normalizedKey, out string value) || string.IsNullOrWhiteSpace(value))
         {
             throw new GeneratedTextValidationException("Ollama did not return required field: " + key);
+        }
+
+        return CleanResponse(value);
+    }
+
+    private static string ReadOptionalField(Dictionary<string, string> fields, string key)
+    {
+        string normalizedKey = NormalizeLabelKey(key);
+        if (!fields.TryGetValue(normalizedKey, out string value) || string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
         }
 
         return CleanResponse(value);
