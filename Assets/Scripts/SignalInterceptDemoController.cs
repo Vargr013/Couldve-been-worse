@@ -121,6 +121,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private GameObject interceptPanel;
     private GameObject decisionPanel;
     private GameObject logPanel;
+    private Canvas briefingCanvas;
+    private Canvas interceptCanvas;
+    private Canvas decisionCanvas;
+    private Canvas logCanvas;
     private Text briefingText;
     private Text statsText;
     private Text statusText;
@@ -239,6 +243,11 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             return false;
         }
 
+        briefingCanvas = FindNamedComponent<Canvas>(root, "Briefing Canvas");
+        interceptCanvas = FindNamedComponent<Canvas>(root, "Intercept Canvas");
+        decisionCanvas = FindNamedComponent<Canvas>(root, "Decision Canvas");
+        logCanvas = FindNamedComponent<Canvas>(root, "Mission Log Canvas");
+
         uiJuice = root.GetComponent<UiJuice>() ?? root.AddComponent<UiJuice>();
         typewriterEffect = root.GetComponent<TypewriterTextEffect>() ?? root.AddComponent<TypewriterTextEffect>();
 
@@ -303,10 +312,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
 
         panelGroups = new CanvasGroup[4];
-        panelGroups[(int)DeskTab.Briefing] = EnsureCanvasGroup(briefingPanel);
-        panelGroups[(int)DeskTab.Intercept] = EnsureCanvasGroup(interceptPanel);
-        panelGroups[(int)DeskTab.Decision] = EnsureCanvasGroup(decisionPanel);
-        panelGroups[(int)DeskTab.MissionLog] = EnsureCanvasGroup(logPanel);
+        panelGroups[(int)DeskTab.Briefing] = EnsureCanvasGroup(briefingCanvas != null ? briefingCanvas.gameObject : briefingPanel);
+        panelGroups[(int)DeskTab.Intercept] = EnsureCanvasGroup(interceptCanvas != null ? interceptCanvas.gameObject : interceptPanel);
+        panelGroups[(int)DeskTab.Decision] = EnsureCanvasGroup(decisionCanvas != null ? decisionCanvas.gameObject : decisionPanel);
+        panelGroups[(int)DeskTab.MissionLog] = EnsureCanvasGroup(logCanvas != null ? logCanvas.gameObject : logPanel);
         return true;
     }
 
@@ -1179,10 +1188,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
 
         activeTab = tab;
-        SetPanelVisible(DeskTab.Briefing, briefingPanel, tab == DeskTab.Briefing);
-        SetPanelVisible(DeskTab.Intercept, interceptPanel, tab == DeskTab.Intercept);
-        SetPanelVisible(DeskTab.Decision, decisionPanel, tab == DeskTab.Decision);
-        SetPanelVisible(DeskTab.MissionLog, logPanel, tab == DeskTab.MissionLog);
+        SetPanelVisible(DeskTab.Briefing, briefingCanvas, briefingPanel, tab == DeskTab.Briefing);
+        SetPanelVisible(DeskTab.Intercept, interceptCanvas, interceptPanel, tab == DeskTab.Intercept);
+        SetPanelVisible(DeskTab.Decision, decisionCanvas, decisionPanel, tab == DeskTab.Decision);
+        SetPanelVisible(DeskTab.MissionLog, logCanvas, logPanel, tab == DeskTab.MissionLog);
         UpdateTabStates();
     }
 
@@ -1208,9 +1217,13 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
     }
 
-    private void SetPanelVisible(DeskTab tab, GameObject panel, bool visible)
+    private void SetPanelVisible(DeskTab tab, Canvas subCanvas, GameObject panel, bool visible)
     {
-        panel.SetActive(visible);
+        if (subCanvas != null)
+            subCanvas.gameObject.SetActive(visible);
+        else
+            panel.SetActive(visible);
+
         CanvasGroup group = GetPanelGroup(tab);
         if (group != null)
         {
@@ -1956,7 +1969,8 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         BuildTabs(canvas.transform, font);
 
-        briefingPanel = CreatePanel("Briefing Panel", canvas.transform);
+        briefingCanvas = CreateSubCanvas("Briefing Canvas", canvas.transform).GetComponent<Canvas>();
+        briefingPanel = CreatePanel("Briefing Panel", briefingCanvas.transform);
         ApplySprite(briefingPanel.GetComponent<Image>(), briefingPanelSprite, Color.white);
         AddPanelLabelIfEnabled(briefingPanel.transform, font, "Desk memo: read this before confidently ruining anything");
         Image briefingPlate = CreateReadablePlate("Briefing Text Plate", briefingPanel.transform, ReadablePaperPlate);
@@ -1966,7 +1980,8 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         ConfigureReadableText(briefingText, 13, 16);
         StretchToParent(briefingText.rectTransform, 102f, 98f, 102f, 82f);
 
-        interceptPanel = CreatePanel("Intercept Panel", canvas.transform);
+        interceptCanvas = CreateSubCanvas("Intercept Canvas", canvas.transform).GetComponent<Canvas>();
+        interceptPanel = CreatePanel("Intercept Panel", interceptCanvas.transform);
         ApplySprite(interceptPanel.GetComponent<Image>(), interceptPanelSprite, Color.white);
         interceptPanelRect = interceptPanel.GetComponent<RectTransform>();
         interceptGlowImage = CreateImage("Terminal Glow", interceptPanel.transform, useGeneratedArtAssets ? new Color(0f, 0f, 0f, 0f) : new Color(0.08f, 0.28f, 0.2f, 0.08f));
@@ -1989,12 +2004,14 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         pingLayer.SetParent(interceptPanel.transform, false);
         StretchToParent(pingLayer, 0f, 0f, 0f, 0f);
 
-        decisionPanel = CreatePanel("Decision Panel", canvas.transform);
+        decisionCanvas = CreateSubCanvas("Decision Canvas", canvas.transform).GetComponent<Canvas>();
+        decisionPanel = CreatePanel("Decision Panel", decisionCanvas.transform);
         ApplySprite(decisionPanel.GetComponent<Image>(), inspectorDecisionPanelSprite != null ? inspectorDecisionPanelSprite : logPanelSprite, Color.white);
         AddPanelLabelIfEnabled(decisionPanel.transform, font, "Reply tray: three bad ways to sound employed");
         BuildReplyControls(decisionPanel.transform, font);
 
-        logPanel = CreatePanel("Mission Log Panel", canvas.transform);
+        logCanvas = CreateSubCanvas("Mission Log Canvas", canvas.transform).GetComponent<Canvas>();
+        logPanel = CreatePanel("Mission Log Panel", logCanvas.transform);
         ApplySprite(logPanel.GetComponent<Image>(), logPanelSprite, Color.white);
         AddPanelLabelIfEnabled(logPanel.transform, font, "Filed consequences: the supervisor is typing with intent");
         Image logPlate = CreateReadablePlate("Mission Log Text Plate", logPanel.transform, ReadablePaperPlate);
@@ -2029,10 +2046,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
 
         panelGroups = new CanvasGroup[4];
-        panelGroups[(int)DeskTab.Briefing] = EnsureCanvasGroup(briefingPanel);
-        panelGroups[(int)DeskTab.Intercept] = EnsureCanvasGroup(interceptPanel);
-        panelGroups[(int)DeskTab.Decision] = EnsureCanvasGroup(decisionPanel);
-        panelGroups[(int)DeskTab.MissionLog] = EnsureCanvasGroup(logPanel);
+        panelGroups[(int)DeskTab.Briefing] = EnsureCanvasGroup(briefingCanvas.gameObject);
+        panelGroups[(int)DeskTab.Intercept] = EnsureCanvasGroup(interceptCanvas.gameObject);
+        panelGroups[(int)DeskTab.Decision] = EnsureCanvasGroup(decisionCanvas.gameObject);
+        panelGroups[(int)DeskTab.MissionLog] = EnsureCanvasGroup(logCanvas.gameObject);
     }
 
     private void BuildTabs(Transform parent, Font font)
@@ -2289,6 +2306,18 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
 
         return canvas;
+    }
+
+    private static GameObject CreateSubCanvas(string name, Transform parent)
+    {
+        var obj = new GameObject(name, typeof(RectTransform), typeof(Canvas));
+        obj.transform.SetParent(parent, false);
+        var rect = obj.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        return obj;
     }
 
     private static Image CreateImage(string name, Transform parent, Color color)
