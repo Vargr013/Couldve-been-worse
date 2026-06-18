@@ -22,6 +22,19 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     [Header("Ollama")]
     [SerializeField] private string ollamaEndpoint = "http://localhost:11434/api/generate";
     [SerializeField] private string modelName = "llama3.1:8b";
+    [Tooltip("Model used for scenario generation. Falls back to the default model if left empty.")]
+    [SerializeField] private string scenarioModelName = string.Empty;
+    [Tooltip("Model used for intercept and reply generation. Falls back to the default model if left empty.")]
+    [SerializeField] private string interceptModelName = string.Empty;
+    [Tooltip("Model used for outcome generation. Falls back to the default model if left empty.")]
+    [SerializeField] private string outcomeModelName = string.Empty;
+    [Tooltip("Model used for final report generation. Falls back to the default model if left empty.")]
+    [SerializeField] private string reportModelName = string.Empty;
+    [Header("Quality Overseer")]
+    [Tooltip("When enabled, each LLM output is reviewed and refined by a second quality-check model before display.")]
+    [SerializeField] private bool enableQualityOverseer = false;
+    [Tooltip("Model used for quality-overwatch polishing. Must be an installed Ollama model.")]
+    [SerializeField] private string qualityModelName = "llama3.2:3b";
     [SerializeField] private int requestTimeoutSeconds = 120;
 
     [Header("Inspector Visual Direction")]
@@ -142,6 +155,39 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private VisualState visualState = VisualState.Idle;
     private PrimaryActionMode primaryActionMode = PrimaryActionMode.GenerateScenario;
     private string missionLog = string.Empty;
+
+    private string ResolveModel(string taskModel)
+    {
+        return string.IsNullOrWhiteSpace(taskModel) ? modelName : taskModel;
+    }
+
+    private async Task<string> QualityRefineAsync(string rawOutput, string contextSummary, string taskLabel, CancellationToken cancellationToken)
+    {
+        if (!enableQualityOverseer || string.IsNullOrWhiteSpace(qualityModelName))
+        {
+            return rawOutput;
+        }
+
+        string prompt = "Fictional dark satirical intel desk game. No real countries, conflicts, organisations, or people.\n" +
+                        $"You are a quality editor reviewing {taskLabel} output.\n" +
+                        $"Context: {contextSummary}\n" +
+                        "Review the labelled text below. Fix incoherence, maintain satirical tone, remove real-world references, improve clarity. Return the refined text with its EXACT original labelled structure. Do not add, remove, or rename labels. Return only the refined text.\n" +
+                        $"Text to refine:\n{rawOutput}";
+
+        try
+        {
+            signalStateText.text = $"Quality overseer checking {taskLabel}...";
+            var client = new OllamaClient(ollamaEndpoint, qualityModelName, requestTimeoutSeconds);
+            string refined = await client.GenerateAsync(prompt, cancellationToken);
+            string cleaned = CleanResponse(refined);
+            return string.IsNullOrWhiteSpace(cleaned) ? rawOutput : cleaned;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"Quality overseer failed on {taskLabel}, using raw output: {exception.Message}");
+            return rawOutput;
+        }
+    }
 
     private void Awake()
     {
@@ -283,7 +329,10 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         {
             supervisorNoteText.text = "Supervisor note: \"Try not to make the corridor worse before coffee.\"";
         }
-        statusText.text = $"Ollama required: {ollamaEndpoint}";
+        string modelSummary = HasCustomModels()
+            ? $"Models: Scn={ResolveModel(scenarioModelName)} Int={ResolveModel(interceptModelName)} Out={ResolveModel(outcomeModelName)} Rpt={ResolveModel(reportModelName)}"
+            : $"Default model: {modelName}";
+        statusText.text = $"Ollama {ollamaEndpoint} | {modelSummary}";
         signalStateText.text = "Receiver idle";
         SetPrimaryAction(PrimaryActionMode.GenerateScenario);
         generateButton.interactable = true;
@@ -402,7 +451,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         try
         {
-            var client = new OllamaClient(ollamaEndpoint, modelName, requestTimeoutSeconds);
+            var client = new OllamaClient(ollamaEndpoint, ResolveModel(scenarioModelName), requestTimeoutSeconds);
             ScenarioBrief scenario = await RequestValidScenario(
                 client,
                 InterceptPromptBuilder.BuildScenarioPrompt(),
@@ -432,7 +481,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            statusText.text = BuildOllamaFailureMessage(exception);
+            statusText.text = BuildOllamaFailureMessage(exception, ResolveModel(scenarioModelName));
             briefingText.text = InterceptPromptBuilder.BuildMissionBriefingText();
             SetVisualState(VisualState.Idle);
         }
@@ -486,11 +535,12 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         try
         {
-            var client = new OllamaClient(ollamaEndpoint, modelName, requestTimeoutSeconds);
+            var client = new OllamaClient(ollamaEndpoint, ResolveModel(interceptModelName), requestTimeoutSeconds);
             string prompt = InterceptPromptBuilder.BuildInterceptAndRepliesPrompt(
                 missionState.Scenario,
                 missionState.SituationSummary,
                 missionState.BuildConsequenceSummary(),
+                missionState.BuildNarrativeRecap(),
                 pendingHiddenTruth,
                 activeSource,
                 BuildCluePromptSummary(activeClues),
@@ -506,6 +556,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
                 missionState.Scenario,
                 missionState.SituationSummary,
                 missionState.BuildConsequenceSummary(),
+                missionState.BuildNarrativeRecap(),
                 pendingHiddenTruth,
                 activeSource,
                 BuildCluePromptSummary(activeClues),
@@ -546,7 +597,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            statusText.text = BuildOllamaFailureMessage(exception);
+            statusText.text = BuildOllamaFailureMessage(exception, ResolveModel(interceptModelName));
             transmissionText.text = "No live intercept available.";
             ApplyClueChips(Array.Empty<EvidenceClue>());
             generateButton.interactable = true;
@@ -583,11 +634,12 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         try
         {
-            var client = new OllamaClient(ollamaEndpoint, modelName, requestTimeoutSeconds);
+            var client = new OllamaClient(ollamaEndpoint, ResolveModel(outcomeModelName), requestTimeoutSeconds);
             string outcomePrompt = InterceptPromptBuilder.BuildOutcomePrompt(
                 missionState.Scenario,
                 missionState.SituationSummary,
                 missionState.BuildConsequenceSummary(),
+                missionState.BuildNarrativeRecap(),
                 missionState.CurrentIntercept,
                 missionState.CurrentSource,
                 missionState.BuildClueSummary(),
@@ -601,6 +653,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
             GeneratedOutcomePackage outcome = await RequestValidOutcome(client, outcomePrompt, retryPrompt, requestCancellation.Token);
             missionState.ApplyOutcome(outcome);
+            missionState.RecordRoundSummary(selectedReply, result, outcome.Outcome);
             RefreshSituationBoard();
             AppendMissionLog(BuildDecisionSummary(selectedReply, result, outcome.Outcome));
             statusText.text = missionState.IsComplete
@@ -613,14 +666,18 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
         catch (GeneratedTextValidationException exception)
         {
-            AppendMissionLog(BuildDecisionSummary(selectedReply, result, "The supervisor writes, \"Even the summary refused to be associated with this.\""));
+            string fallbackOutcome = "The supervisor writes, \"Even the summary refused to be associated with this.\"";
+            missionState.RecordRoundSummary(selectedReply, result, fallbackOutcome);
+            AppendMissionLog(BuildDecisionSummary(selectedReply, result, fallbackOutcome));
             statusText.text = "Ollama responded, but the outcome failed validation. You can continue.\n" + exception.Message;
             Debug.LogWarning(exception.Message);
         }
         catch (Exception exception)
         {
-            AppendMissionLog(BuildDecisionSummary(selectedReply, result, "The supervisor writes, \"No outcome returned. We will treat this silence as policy.\""));
-            statusText.text = BuildOllamaFailureMessage(exception);
+            string fallbackOutcome = "The supervisor writes, \"No outcome returned. We will treat this silence as policy.\"";
+            missionState.RecordRoundSummary(selectedReply, result, fallbackOutcome);
+            AppendMissionLog(BuildDecisionSummary(selectedReply, result, fallbackOutcome));
+            statusText.text = BuildOllamaFailureMessage(exception, ResolveModel(outcomeModelName));
         }
         finally
         {
@@ -655,7 +712,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         try
         {
-            var client = new OllamaClient(ollamaEndpoint, modelName, requestTimeoutSeconds);
+            var client = new OllamaClient(ollamaEndpoint, ResolveModel(reportModelName), requestTimeoutSeconds);
             string prompt = InterceptPromptBuilder.BuildFinalReportPrompt(
                 missionState.Scenario,
                 missionState.SituationSummary,
@@ -680,7 +737,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            statusText.text = BuildOllamaFailureMessage(exception);
+            statusText.text = BuildOllamaFailureMessage(exception, ResolveModel(reportModelName));
             Debug.LogWarning(exception.Message);
         }
         finally
@@ -742,10 +799,13 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private async Task<ScenarioBrief> SendAndParseScenario(OllamaClient client, string prompt, CancellationToken cancellationToken)
     {
-        Debug.Log($"Sending Ollama scenario query to {modelName} at {ollamaEndpoint}:\n{prompt}");
+        Debug.Log($"Sending Ollama scenario query to {ResolveModel(scenarioModelName)} at {ollamaEndpoint}:\n{prompt}");
 
         string rawResponse = await client.GenerateAsync(prompt, cancellationToken);
         string cleanedResponse = CleanResponse(rawResponse);
+        cleanedResponse = await QualityRefineAsync(cleanedResponse,
+            "Generating a 5-round fictional satirical intelligence desk scenario. Three signal sources must have Friendly, Enemy, and Deception biases.",
+            "scenario", cancellationToken);
         ScenarioBrief scenario = ParseScenario(cleanedResponse);
         ValidateScenario(scenario);
 
@@ -857,10 +917,14 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         string prompt,
         CancellationToken cancellationToken)
     {
-        Debug.Log($"Sending Ollama outcome query to {modelName} at {ollamaEndpoint}:\n{prompt}");
+        Debug.Log($"Sending Ollama outcome query to {ResolveModel(outcomeModelName)} at {ollamaEndpoint}:\n{prompt}");
 
         string rawResponse = await client.GenerateAsync(prompt, cancellationToken);
         string cleanedResponse = CleanResponse(rawResponse);
+        string context = missionState.HasScenario
+            ? $"Round {missionState.RoundNumber}/{MissionState.RoundLimit}. Scenario: {missionState.Scenario.Title}. History: {missionState.BuildNarrativeRecap()}"
+            : "Outcome narration for a satirical intelligence desk game.";
+        cleanedResponse = await QualityRefineAsync(cleanedResponse, context, "outcome", cancellationToken);
         GeneratedOutcomePackage outcome = ParseOutcome(cleanedResponse);
         ValidateOutcome(outcome.Outcome);
         ValidateOutcome(outcome.Situation);
@@ -876,10 +940,14 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         GeneratedReplyOption[] replyProfiles,
         CancellationToken cancellationToken)
     {
-        Debug.Log($"Sending Ollama query to {modelName} at {ollamaEndpoint}:\n{prompt}");
+        Debug.Log($"Sending Ollama query to {ResolveModel(interceptModelName)} at {ollamaEndpoint}:\n{prompt}");
 
         string rawResponse = await client.GenerateAsync(prompt, cancellationToken);
         string cleanedResponse = CleanResponse(rawResponse);
+        string context = missionState.HasScenario
+            ? $"Round {missionState.RoundNumber + 1}/{MissionState.RoundLimit}. Scenario: {missionState.Scenario.Title}. History: {missionState.BuildNarrativeRecap()}"
+            : "Intercept generation for a satirical intelligence desk game.";
+        cleanedResponse = await QualityRefineAsync(cleanedResponse, context, "intercept-replies", cancellationToken);
         GeneratedInterceptPackage package = ParsePackage(cleanedResponse, replyProfiles);
         ValidateIntercept(package.Intercept);
         foreach (GeneratedReplyOption option in package.Options)
@@ -911,10 +979,14 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
     private async Task<string> SendAndValidate(OllamaClient client, string prompt, Action<string> validator, CancellationToken cancellationToken)
     {
-        Debug.Log($"Sending Ollama query to {modelName} at {ollamaEndpoint}:\n{prompt}");
+        Debug.Log($"Sending Ollama query to {ResolveModel(reportModelName)} at {ollamaEndpoint}:\n{prompt}");
 
         string rawResponse = await client.GenerateAsync(prompt, cancellationToken);
         string cleanedResponse = CleanResponse(rawResponse);
+        string context = missionState.HasScenario
+            ? $"Final debrief. Scenario: {missionState.Scenario.Title}. Grade: {missionState.Grade}. Correct: {missionState.CorrectDecisions}/{MissionState.RoundLimit}. History: {missionState.BuildNarrativeRecap()}"
+            : "Final report for a satirical intelligence desk game.";
+        cleanedResponse = await QualityRefineAsync(cleanedResponse, context, "final-report", cancellationToken);
         validator(cleanedResponse);
 
         Debug.Log($"Ollama response received:\n{cleanedResponse}");
@@ -935,7 +1007,22 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private void RefreshStats()
     {
         string roundText = missionState.HasScenario ? $"{missionState.RoundNumber}/{MissionState.RoundLimit}" : "0/5";
-        statsText.text = $"Round: {roundText}    Correct: {missionState.CorrectDecisions}    Risk: {missionState.RiskLevel}    Model: {modelName}";
+        string modelInfo = HasCustomModels()
+            ? $"Scn:{ResolveModel(scenarioModelName)} Int:{ResolveModel(interceptModelName)} Out:{ResolveModel(outcomeModelName)} Rpt:{ResolveModel(reportModelName)}"
+            : $"Model: {modelName}";
+        if (enableQualityOverseer && !string.IsNullOrWhiteSpace(qualityModelName))
+        {
+            modelInfo += $" Q:{qualityModelName}";
+        }
+        statsText.text = $"Round: {roundText}    Correct: {missionState.CorrectDecisions}    Risk: {missionState.RiskLevel}    {modelInfo}";
+    }
+
+    private bool HasCustomModels()
+    {
+        return !string.IsNullOrWhiteSpace(scenarioModelName) ||
+               !string.IsNullOrWhiteSpace(interceptModelName) ||
+               !string.IsNullOrWhiteSpace(outcomeModelName) ||
+               !string.IsNullOrWhiteSpace(reportModelName);
     }
 
     private void RefreshSituationBoard()
@@ -990,15 +1077,16 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         return $"Round {missionState.RoundNumber}: {assessment}.\nSource: {source}\nClues: {missionState.BuildClueSummary()}\nYou chose: \"{selectedReply.Text}\"\n{outcome}";
     }
 
-    private string BuildOllamaFailureMessage(Exception exception)
+    private string BuildOllamaFailureMessage(Exception exception, string failingModel)
     {
+        string modelTag = string.IsNullOrWhiteSpace(failingModel) ? "unknown model" : failingModel;
         string message = exception.Message;
         if (message.IndexOf("timeout", StringComparison.OrdinalIgnoreCase) >= 0)
         {
-            return $"Ollama request timed out after {requestTimeoutSeconds} seconds. The current prompt is larger now, so use a faster model or raise the inspector timeout if this machine is still thinking.\n{message}";
+            return $"Ollama request timed out after {requestTimeoutSeconds}s on model {modelTag}. Try a faster model or raise the inspector timeout.\n{message}";
         }
 
-        return "Ollama is not responding. Start Ollama and install/select the configured model.\n" + message;
+        return $"Ollama is not responding for model {modelTag}. Start Ollama and ensure the model is installed.\n{message}";
     }
 
     private void SetPrimaryAction(PrimaryActionMode mode)

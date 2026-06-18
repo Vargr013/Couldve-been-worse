@@ -142,6 +142,7 @@ public sealed class MissionState
 
     private readonly List<string> consequences = new();
     private readonly List<EvidenceClue> currentClues = new();
+    private readonly List<string> roundHistory = new();
 
     public void Reset()
     {
@@ -161,6 +162,7 @@ public sealed class MissionState
         LatestConsequence = string.Empty;
         consequences.Clear();
         currentClues.Clear();
+        roundHistory.Clear();
         HasPendingReply = false;
     }
 
@@ -181,6 +183,7 @@ public sealed class MissionState
         LatestConsequence = "No consequences yet. Command is treating this as proof of good planning.";
         consequences.Clear();
         currentClues.Clear();
+        roundHistory.Clear();
         HasPendingReply = false;
     }
 
@@ -258,6 +261,25 @@ public sealed class MissionState
         return consequences.Count == 0
             ? "No visible consequences yet."
             : string.Join("; ", consequences.TakeLast(4));
+    }
+
+    public void RecordRoundSummary(GeneratedReplyOption selectedReply, DecisionResult result, string outcome)
+    {
+        string assessment = result.WasCorrect ? "correct reply" : "incorrect reply";
+        string source = CurrentSource?.CodeName ?? "Unknown";
+        roundHistory.Add(
+            $"Round {RoundNumber}: {assessment}. Source {source}. Player chose \"{selectedReply.Text.Trim()}\". {outcome.Trim()}");
+        while (roundHistory.Count > 5)
+        {
+            roundHistory.RemoveAt(0);
+        }
+    }
+
+    public string BuildNarrativeRecap()
+    {
+        return roundHistory.Count == 0
+            ? "No rounds completed yet."
+            : string.Join(" | ", roundHistory);
     }
 
     public string BuildClueSummary()

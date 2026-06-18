@@ -32,6 +32,7 @@ public static class InterceptPromptBuilder
         ScenarioBrief scenario,
         string situationSummary,
         string consequenceSummary,
+        string narrativeRecap,
         InterceptClassification hiddenTruth,
         SignalSourceProfile activeSource,
         string clueSummary,
@@ -46,6 +47,7 @@ public static class InterceptPromptBuilder
     {
         return OperationContext + "\n" +
                $"Scenario: {scenario.Title}; {scenario.Location}; task {scenario.PlayerTask}; stake {scenario.Stake}; problem {scenario.Complication}; bad idea {scenario.CommandBadIdea}.\n" +
+               $"Round history so far: {narrativeRecap}\n" +
                $"State: {situationSummary}. Consequences: {consequenceSummary}. Values S{corridorStability} O{objectiveStatus} C{confusion} E{commandEmbarrassment}. Round {roundNumber}/{MissionState.RoundLimit}. Risk {riskLevel}. Patience {supervisorPatience}.\n" +
                $"Source notes for context only, do not quote these labels in the transcript: {activeSource.CodeName}; {activeSource.PublicDescription}; credibility {activeSource.Reliability}; habit {activeSource.Tell}; motive {activeSource.Agenda}; last observed {activeSource.LastObservedBehavior}.\n" +
                $"Clues: {clueSummary}. Hidden intent: {DescribeHiddenTruth(hiddenTruth)}.\n" +
@@ -57,6 +59,7 @@ public static class InterceptPromptBuilder
         ScenarioBrief scenario,
         string situationSummary,
         string consequenceSummary,
+        string narrativeRecap,
         InterceptClassification hiddenTruth,
         SignalSourceProfile activeSource,
         string clueSummary,
@@ -73,6 +76,7 @@ public static class InterceptPromptBuilder
                    scenario,
                    situationSummary,
                    consequenceSummary,
+                   narrativeRecap,
                    hiddenTruth,
                    activeSource,
                    clueSummary,
@@ -91,6 +95,7 @@ public static class InterceptPromptBuilder
         ScenarioBrief scenario,
         string situationSummary,
         string consequenceSummary,
+        string narrativeRecap,
         string intercept,
         SignalSourceProfile activeSource,
         string clueSummary,
@@ -103,6 +108,7 @@ public static class InterceptPromptBuilder
     {
         return OperationContext + "\n" +
                $"Scenario: {scenario.Title}; {scenario.Location}; stake {scenario.Stake}; problem {scenario.Complication}; bad idea {scenario.CommandBadIdea}.\n" +
+               $"Round history: {narrativeRecap}\n" +
                $"Before: {situationSummary}. Consequences: {consequenceSummary}. Source {activeSource.CodeName}, tell {activeSource.Tell}, last {activeSource.LastObservedBehavior}. Clues {clueSummary}.\n" +
                $"Intercept \"{intercept}\". Player \"{selectedReply.Text}\". Choice meaning {DescribeHiddenTruth(selectedReply.Classification)} / {selectedReply.Action}. Correct {decisionResult.WasCorrect}. Values S{corridorStability} O{objectiveStatus} C{confusion} E{commandEmbarrassment}.\n" +
                "Return only:\nOUTCOME: <2 short sentences, concrete consequence plus dry supervisor comment>\nSITUATION: <one sentence updated landscape>\nCONSEQUENCE: <short board consequence>\nSOURCE_NOTE: <short source note>";

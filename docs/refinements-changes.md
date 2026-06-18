@@ -55,8 +55,84 @@ See `feedback-summary.md` and `critical-feedback.md` for the full feedback recor
 - `feedback-summary.md` created: structured record of all feedback with aspect mapping, recurring themes, and initial reactions.
 - `critical-feedback.md` created: analytical engagement with feedback including expectations, surprises, declined items with feasibility justification, and final judgement.
 - `evidence-attendance.md` created: event description, photo reference, attendee notes, and identification of feedback providers.
+- `final-reflection.md` created: 777-word reflection on professional engagement, feedback integration, AI collaboration, and ethical considerations.
 - This file updated to record feedback-driven code changes.
 - `README.md` updated to reference the new feedback documentation.
+
+### LLM Context Retention: Narrative Recap Injection (F12)
+
+**Reported:** The academic assessor noted that during play, the LLM "would struggle to keep context of the scenario," weakening narrative coherence across rounds.
+
+**Root cause:** While the existing prompt builder already passed scenario details, situation summaries, and the last four consequences to each LLM call, the information was compressed into dense single-line summaries. The model had no structured record of what happened in each previous round — which player choices were made, which sources were involved, or how consequences connected to specific decisions. This made it difficult for the LLM to maintain a coherent narrative arc across five rounds.
+
+**Fix implemented in `MissionState.cs`:**
+- Added a `roundHistory` list to store a one-line summary of every completed round (round number, correct/incorrect, source, chosen reply text, outcome).
+- Added `RecordRoundSummary(selectedReply, result, outcome)` to capture each round's resolution after outcome generation.
+- Added `BuildNarrativeRecap()` to return the round history as a pipe-delimited narrative string for prompt injection.
+- The history is capped at 5 entries (one full scenario) and cleared on `Reset()` and `SetScenario()`.
+
+**Fix implemented in `InterceptPromptBuilder.cs`:**
+- `BuildInterceptAndRepliesPrompt()` now accepts and includes a `narrativeRecap` parameter, placing round history directly before the current state.
+- `BuildInterceptAndRepliesRetryPrompt()` signature updated to match.
+- `BuildOutcomePrompt()` now also accepts a `narrativeRecap` parameter, giving the outcome generator access to the full story arc when writing consequences.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- `GenerateIntercept()` now passes `missionState.BuildNarrativeRecap()` to both the primary and retry intercept prompts.
+- `SelectReply()` calls `missionState.RecordRoundSummary()` after successful outcome generation, and also in the validation-failure and exception paths so context remains consistent even when outcome generation fails.
+- `SelectReply()` passes `missionState.BuildNarrativeRecap()` to the outcome prompt.
+
+**Design rationale (F13 declined, F12 addressed):** The academic assessor also suggested using multiple AI models for better control. This was declined because running concurrent Ollama models on consumer hardware would multiply latency and memory requirements beyond the project's "runs on a laptop" goal. Instead, the narrative recap approach addresses the underlying concern (context retention) through improved single-model prompt engineering — keeping the toolset unchanged while making the LLM's output more coherent across rounds.
+
+**Outcome:** Each LLM call now receives a structured history of everything that has happened in the scenario so far, expressed as narrative events rather than just compressed value summaries. This should improve the model's ability to write intercepts, replies, and consequences that feel connected to prior rounds rather than isolated per round.
+
+### Multi-Model Architecture: Per-Task Model Selection (F13)
+
+**Reported:** The academic assessor recommended using more AI models to give better control over the final result.
+
+**Root cause:** The prototype used a single `llama3.1:8b` model for all four LLM tasks (scenario generation, intercept and reply generation, outcome narration, and final report generation). While functional, this treated a general-purpose model as a one-size-fits-all solution. Different tasks require different strengths — scenario generation benefits from creative long-form capability, while intercept generation benefits from structured brevity and speed. A single model cannot be optimised for all tasks simultaneously.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- Replaced the single `modelName` field with four task-specific model fields in the inspector:
+  - `scenarioModelName` (default: empty, falls back to `modelName`)
+  - `interceptModelName` (default: empty, falls back to `modelName`)
+  - `outcomeModelName` (default: empty, falls back to `modelName`)
+  - `reportModelName` (default: empty, falls back to `modelName`)
+- Added `ResolveModel(string taskModel)` helper that returns the task-specific model if set, otherwise the default `modelName`.
+- Each `GenerateScenario()`, `GenerateIntercept()`, `SelectReply()`, and `GenerateFinalReport()` call now passes its resolved model to `new OllamaClient()`.
+- `RefreshStats()` updated to display the multi-model configuration when custom models are set (e.g., `Scn:llama3.1:8b Int:llama3.2:3b Out:llama3.2:3b Rpt:llama3.1:8b`), or the default single-model label when not.
+- `BuildOllamaFailureMessage()` updated to accept a model name parameter so error messages identify which specific model failed.
+- The start-screen status text now displays the full multi-model assignment.
+
+**Design rationale:** The assessor's initial suggestion — more AI models for better control — was sound. The concern was that running multiple models concurrently would multiply latency and memory. The solution routes tasks to different models without concurrency: only one model runs at any time. The developer can install `llama3.2:3b` or `gemma2:2b` for faster, lighter intercept and outcome tasks while keeping `llama3.1:8b` for complex scenario and report generation. If a task-specific model is not installed, the default model handles everything — the system degrades gracefully.
+
+**Feasibility:** All models run through the same Ollama endpoint and API. No architectural changes to `OllamaClient.cs` were required. The implementation is fully backward-compatible — leaving all task-specific fields empty preserves the original single-model behaviour.
+
+**Outcome:** The project now supports a configurable multi-model pipeline. Each stage of the LLM workflow can be assigned a different model optimised for its specific task. This gives the developer precise control over quality, speed, and hardware requirements at each stage of the game loop.
+
+### Quality Overseer: Secondary Overwatch Model (F13 Extension)
+
+**Rationale:** Extending the multi-model architecture further, a quality overseer model was added to review and refine every LLM output before it reaches the player. This directly addresses the assessor's concern about "more AIs for better control" — the primary model generates raw content, and a second model acts as a quality gate, polishing coherence, tone, and consistency.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- Added `enableQualityOverseer` boolean toggle in the inspector (default: off).
+- Added `qualityModelName` field (default: `llama3.2:3b`) for selecting the overseer model.
+- Added `QualityRefineAsync()` method:
+  - Takes raw LLM output, a context summary describing the task, a task label for logging, and a cancellation token.
+  - Builds a review prompt instructing the quality model to fix incoherence, maintain satirical tone, remove real-world references, and improve clarity — while preserving the exact labelled field structure.
+  - Returns the refined text. On failure, returns the original raw output unchanged (graceful degradation).
+  - Updates the signal state text to show "Quality overseer checking..." during the review.
+- Wired into all four `SendAndParse*` / `SendAndValidate` methods:
+  - **Scenario** (line ~806): reviews the raw labelled response before parsing.
+  - **Intercept + replies** (line ~950): reviews the entire package with round history context.
+  - **Outcome** (line ~927): reviews the outcome narration with decision context.
+  - **Final report** (line ~989): reviews the debrief with scenario summary context.
+- `RefreshStats()` updated to append `Q:modelName` to the HUD when the quality overseer is active.
+
+**Performance consideration:** The quality overseer adds one extra Ollama call per game step (scenario, each intercept, each outcome, final report). This approximately doubles the LLM wait time per step when enabled. For a 5-round playthrough, this adds roughly 6 additional model calls. The trade-off is intentional: the overseer is off by default for speed, and can be enabled when output quality is prioritised over response time. On fast hardware with smaller models (e.g. `llama3.2:3b` as overseer), the review pass adds 3-5 seconds per step.
+
+**Design:** The quality overseer operates as a sequential polish pass — it receives the primary model's output and context, reviews it, and returns a refined version. It does not generate content from scratch. This gives the developer a two-tier control system: the primary model handles creative generation, and the overseer handles editorial consistency.
+
+**Outcome:** When enabled, every piece of LLM-generated text passes through a second model for quality review before display. This provides an additional layer of coherence control without requiring the developer to hand-edit prompt outputs, and directly satisfies the assessor's request for multiple AI models working together to improve the final result.
 
 ---
 

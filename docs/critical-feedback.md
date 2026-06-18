@@ -22,7 +22,9 @@ Attendees also completely ignored aspects I thought would draw focus. No one com
 
 ### Multiple AI Models for Context Control (F13)
 
-**Declined.** The assessor's suggestion of using multiple AI models to improve context retention is architecturally interesting but impractical within this project's constraints. Running multiple Ollama models simultaneously on consumer hardware would multiply latency and memory requirements beyond what is reasonable for a local-only prototype. More importantly, the original design philosophy was to solve context retention through prompt engineering — each prompt carries the full scenario context as labelled fields — rather than through a multi-model pipeline. If context is being lost, the fix should be stronger prompt structure or a context-summary injection step, not an architectural overhaul that introduces new failure modes and hardware dependencies.
+**Implemented with adaptation.** The assessor's suggestion of using multiple AI models was initially declined based on the assumption that it required running multiple models concurrently — doubling latency and memory requirements on consumer hardware. Upon further consideration, the underlying insight was valid: a single general-purpose model making every call misses the opportunity to use task-specialised models. The implemented approach routes each prompt type to a task-appropriate model via inspector-configurable fields. Scenario generation targets `llama3.1:8b` for creative long-form output. Intercept and reply generation can use `llama3.2:3b` for faster, more focused structured output. Outcome narration and final report generation each have their own model assignments. This gives the developer precise control over which model handles which stage of the pipeline without adding concurrent inference overhead. Each model can be installed or pulled independently; if a task-specific model is empty, the default model is used as a fallback.
+
+A further quality overseer layer was added: an optional second model that reviews and refines every LLM output before it reaches the player. This "overwatch" model checks for coherence, tone consistency, real-world reference leakage, and clarity — polishing the primary model's raw output. It runs sequentially after the primary generation and is toggled off by default for speed. When enabled, every scenario, intercept, outcome, and final report passes through a quality gate, directly addressing the assessor's request for "more AIs" and "better control."
 
 ### Full Narrative Restructure (F8, F9)
 
@@ -38,7 +40,7 @@ Some feedback items are inherently subjective or in direct tension with each oth
 
 The most notable contradiction is between F1 (the hobbyist's concern about too much reading) and F6 plus F9 (the indie developer's desire for a stronger narrative pull and a consistent authored story). Reducing text volume and deepening narrative engagement pull in opposite directions — richer storytelling requires more text, not less. This tension likely reflects different player types: one wants a quick, scannable experience while the other wants atmospheric immersion. Both are valid preferences, but they cannot be fully satisfied simultaneously within a deduction-first game. My resolution is to lean towards the game's intended audience — players who engage with text as a mechanic — while improving typographic presentation to reduce perceived reading fatigue.
 
-The assessor's suggestion of a multi-model architecture (F13) is a subjective technical opinion, not an established best practice for local LLM game integration. There are valid arguments both for (specialised models per task) and against (doubled latency, doubled memory, inter-model inconsistency). It reflects a particular philosophy about AI architecture rather than an objectively necessary improvement. Dismissing it does not mean ignoring the underlying concern — context retention (F12) is a real problem — but the prescribed solution is one of several possible approaches.
+The assessor's suggestion of a multi-model architecture (F13) was initially considered a subjective technical opinion but has since been implemented as a per-task model selection system. Rather than running models concurrently, the project now routes each prompt type (scenario, intercept, outcome, report) to a dedicated task-appropriate model, configurable in the Unity inspector. This addresses the assessor's concern about "more AIs for better control" without requiring multiple models to be loaded simultaneously.
 
 The *Stories Untold* reference (F8) also highlights a subjective taste divide. That game is a curated, linear narrative experience. Could've Been Worse is designed for procedural replay. The feedback is useful as an aspirational direction but cannot be implemented literally without changing the project's genre.
 
@@ -48,11 +50,10 @@ All suggested changes are *technically* possible within the Unity + Ollama tools
 
 - **UI fixes (F2, F3, F11):** High feasibility, low risk. These are straightforward UGUI adjustments and bug fixes that do not touch the core systems.
 - **Minigame (F7):** Feasible but low return on effort. The generation wait is already short and shrinking as hardware improves.
-- **Multi-model pipeline (F13):** Feasible but impractical. Local inference on consumer GPUs would struggle with concurrent models; the project's "runs on a laptop" goal would be compromised.
+- **Multi-model pipeline (F13):** Implemented as per-task model selection. Each prompt type is routed to a dedicated model (scenario, intercept, outcome, report), configurable via inspector. Models are not loaded concurrently — only one model runs at a time — so the approach preserves the "runs on a laptop" constraint while giving the developer fine-grained control over which model handles each stage.
 - **Narrative restructuring (F8, F9):** Feasible but out of scope. This would be a different game.
 - **Reducing reading (F1):** Feasible through layout and presentation improvements but not through content removal without undermining the deduction mechanic.
 
-Performance considerations are real: Ollama inference is already the bottleneck. Anything that adds latency or memory pressure — especially running multiple models — would degrade the player experience rather than improve it.
 
 ## Final Judgement
 
@@ -60,7 +61,7 @@ The feedback that ultimately shaped my refinements falls into two categories: **
 
 The softlock bug (F11), report screen clutter (F2), and text clipping (F3) will be fixed. These are low-cost, high-impact changes that improve the first-time player experience without altering the game's identity.
 
-Feedback I declined — the minigame, the multi-model architecture, the narrative restructure — was declined not because it was bad advice, but because it would either compromise the core design, exceed the project's technical constraints, or demand effort disproportionate to the benefit.
+Feedback I declined — the minigame and the narrative restructure — was declined not because it was bad advice, but because it would either compromise the core design, exceed the project's technical constraints, or demand effort disproportionate to the benefit.
 
 What I learned from this experience is that critique of an AI-driven game is fundamentally critique of the *game*, not the AI. Players do not separate the technology from the experience. If the LLM adds friction — long waits, incoherent context, walls of text — it is a liability regardless of how clever the pipeline is. If it adds something players genuinely enjoy — in this case, darkly funny reply options — it earns its place. The bar for AI in games is not "does it work?" but "does it make the game better than it would be without it?"
 
