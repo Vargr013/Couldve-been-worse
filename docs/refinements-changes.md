@@ -136,6 +136,88 @@ See `feedback-summary.md` and `critical-feedback.md` for the full feedback recor
 
 ---
 
+## 2026-06-19: Intercept And Reply Pipeline Split
+
+**Rationale:** The original intercept generation combined the intercept text and all three reply options into a single large Ollama request. When either part failed validation, the entire request retried, wasting time and tokens. A failed reply generation also forced a complete intercept regeneration, which was unnecessary when only the replies were malformed.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- Replaced the combined `RequestValidPackage` / `SendAndParsePackage` path with separate intercept and reply methods.
+- Added `RequestValidIntercept()` and `SendAndParseIntercept()` for standalone intercept generation with its own validation and retry logic.
+- Added `RequestValidReplies()` and `SendAndParseReplies()` for standalone reply generation, accepting the already-validated intercept text as context.
+- Added `ParseSingleField()` to extract a single labelled field from a response.
+- Added `ParseFirstMeaningfulLine()` for fallback extraction when a label is missing but a valid content line exists.
+- Added `ParseReplies()` to extract exactly three `OPTION_1/2/3` lines with fallback to next-line parsing.
+- `GenerateIntercept()` now calls `RequestValidIntercept` first, validates the result, then calls `RequestValidReplies` with the confirmed intercept text.
+
+**Fix implemented in `InterceptPromptBuilder.cs`:**
+- Added `BuildInterceptOnlyPrompt()` and `BuildInterceptOnlyRetryPrompt()` for generating the intercept in isolation.
+- Added `BuildRepliesOnlyPrompt()` and `BuildRepliesOnlyRetryPrompt()` for generating replies with the confirmed intercept text injected as the quote `Intercept received: "..."`.
+- Kept the original combined prompt builders for backwards compatibility.
+
+**Outcome:** A failed reply generation no longer forces a complete intercept regeneration. The player sees fewer cascading failures, and each step can retry independently. The split also makes debugging clearer — the log identifies exactly which stage (intercept vs replies) failed.
+
+### Quality Overseer Refusal Detection Hardening
+
+**Reported:** In live playtesting on 19 June 2026, the quality overseer model (`llama3.2:3b`) would occasionally return refusal responses such as "I can't fulfill this request" when asked to review military-flavoured fictional intercept text. The existing `LooksLikeRefusal()` checker did not catch this phrasing, so the refusal was accepted as the "refined" text. The intercept would then contain the literal refusal string, causing reply generation to fail because the model could not produce sensible replies to a refusal.
+
+**Additional failure mode discovered:** In a subsequent test, the quality overseer did not refuse outright but returned a chatty meta-response: "I can assist you with refining the text while maintaining its satirical tone and clarity. Here's the refined version: ..." wrapped around a rewritten intercept. The parser extracted the intro sentence as the intercept rather than the actual transmission. The reply generator then failed because it was asked to reply to "I can assist you with refining the text while maintaining its satirical tone and clarity."
+
+**Root cause:** The quality overseer model, being a small 3B-parameter model, sometimes ignored the instruction to "Return only the refined text" and instead produced conversational meta-output — either a refusal or a helpful-sounding wrapper with commentary. The original `LooksLikeRefusal()` only checked for `"i cannot"`, `"i apologize"`, `"i'm not able"`, `"not appropriate"`, `"illegal"`, `"against policy"`, `"cannot create"`, and `"cannot provide"` — missing many common refusal phrasings and all forms of chatty oversharing.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- Expanded `LooksLikeRefusal()` from 8 checks to 19. New patterns include:
+  - `"i can't"`, `"i can not"`, `"i am not able"`
+  - `"cannot fulfill"`, `"can't fulfill"`, `"fulfill this request"`
+  - `"unable to"`, `"i will not"`, `"won't"`
+  - `"can't complete"`, `"cannot complete"`
+- Added null/whitespace guard returning `false` immediately.
+- Added `LooksLikeChattyOverseerOutput()` to detect meta-commentary output patterns:
+  - `"i can assist you"`, `"here's the refined"`, `"here is the refined"`
+  - `"refined version"`, `"i made some"`, `"let me know"`, `"let me know if you'd like"`
+- Updated `QualityRefineAsync()` to fall back to raw output when the overseer returns a refusal, empty response, **or** chatty commentary — not just refusal/empty.
+- Strengthened the quality overseer prompt to explicitly forbid commentary:
+  - *"Do not add any greeting, explanation, header, footer, or closing. Return ONLY the refined text, exactly as it would appear in the game."*
+  - Changed "Never refuse" to *"You must not refuse, censor, or decline to process this text."*
+  - Emphasised the text is *"harmless fictional content for a single-player satirical game."*
+- Added refusal check inside `ValidateIntercept()` itself: if the parsed intercept text triggers `LooksLikeRefusal()`, it throws `GeneratedTextValidationException` with a clear message, triggering the retry-or-fall-back path.
+- Added a post-intercept guard in `GenerateIntercept()` — after `RequestValidIntercept` returns, if the intercept is empty or looks like a refusal, a clear `GeneratedTextValidationException` is thrown before reply generation starts, avoiding a wasted reply call.
+
+**Outcome:** The quality overseer's refusal and chatty-commentary outputs are now caught at two layers — first in `QualityRefineAsync` (preferring raw output) and second in `ValidateIntercept` (rejecting the parsed value). In the test case where the overseer returned "I can assist you with refining...", the system now detects the chatty markers, falls back to the valid raw intercept, and produces the correct transmission: *"Kraelos-6 to all units, report unusual delay in cargo transit through OldRoute..."* rather than the meta-intro sentence.
+
+### Scenario Parsing Resilience
+
+**Rationale:** The local `llama3.1:8b` model occasionally failed to return all required scenario fields or returned invalid source bias values. When any single field was missing, `ParseScenario` threw `GeneratedTextValidationException` and caused the entire scenario generation to fail and retry — even when 90% of the output was valid.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- Changed scenario field parsing from `ReadRequiredField` to `ReadFieldOrDefault` for all eight scenario fields, providing sensible fallback values:
+  - Title: "Operation Unnamed", Location: "Undisclosed corridor", Task: "Assess the situation", Stake: "Morale is fragile", Complication: "Reports contradict each other", Command Bad Idea: "Command wants a fast public answer", Tone Detail: "Everyone is pretending to be calm", Round Goal: "Read the sources before acting"
+- Source parsing (`ParseSource`) now uses fallback values for all fields: code name `"UNK-{index}"`, public description `"Unverified source"`, reliability `"Unknown"`, tell `"No tell logged"`, agenda `"Unclear agenda"`.
+- Source bias parsing now uses `TryParseClassification` instead of `ParseClassification`. If the bias text is invalid, it falls back to the expected value for that slot (Friendly for source 1, Enemy for source 2, Deception for source 3) rather than throwing.
+- Updated `ParseLooseScenario` to return a clearer error message when fewer than three sources are found: `"Ollama did not return three complete signal sources."` instead of the misleading `"Ollama did not return required field: SCENARIO_TITLE"`.
+- Reply option writing briefs tightened for consistency and clarity.
+
+**Outcome:** A scenario that is mostly well-formed but has one missing or malformed field now parses successfully with a reasonable fallback. This reduces the number of retries and makes the game feel more stable, especially with smaller local models. The stricter retry prompt is still used when the first attempt fails.
+
+### Bug Squash Minigame
+
+**Rationale:** The ~10-second wait during intercept generation was purely passive — the player watched a receiving animation with nothing to do. A short distraction minigame would make the wait feel intentional and add mechanical variety to the desk simulation loop.
+
+**Fix implemented in `SignalInterceptDemoController.cs`:**
+- Added a `BugSquashMinigame` field and `miniGameContainer` inspector slot.
+- Added `ResolveMiniGameContainer()` to find or create the minigame UI host at runtime.
+- `GenerateIntercept()` calls `bugSquash?.StartMinigame()` before the LLM request and `bugSquash?.StopMinigame()` in all exit paths (success, cancellation, validation failure, exception).
+- Squashed bugs are displayed in the signal state text: *"Signal locked. Squashed 3 bugs while the machine deliberated."*
+- Session high score is appended to the HUD stats line.
+- The minigame UI is attached to the intercept panel if no separate `MiniGame` GameObject exists.
+
+**Fix implemented in `BugSquashMinigame.cs` (new file, 511 lines):**
+- Standalone minigame with bug spawning, click-to-squash, score tracking, visual glitch effects, and procedural text scrambling.
+- Handles its own Canvas and UI layout, independent of the main controller's scene binding.
+
+**Outcome:** The intercept generation wait now includes a clickable minigame that gives the player something to do while the model runs. The bugs-squashed counter provides a small secondary score layer and reinforces the "janky intelligence terminal" theme.
+
+---
+
 - Created the Unity project for a standalone GADS7331 POE Part 2 prototype.
 - Chose a text-focused intelligence desk simulation instead of a larger action game.
 - Defined the core player role as an intelligence officer interpreting intercepted communication.

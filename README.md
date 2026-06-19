@@ -21,8 +21,8 @@ The player acts as an intelligence officer working through Operation Greyline. E
 The gameplay loop is:
 
 1. Generate a fictional scenario through Ollama.
-2. Generate a new intercepted transmission and three reply options.
-3. Review the source clues and situation board.
+2. Generate a new intercepted transmission while squashing bugs in a terminal minigame.
+3. Review three AI-generated reply options, source clues, and the situation board.
 4. Choose a reply.
 5. Resolve the consequence through another Ollama call.
 6. Repeat for five rounds.
@@ -36,14 +36,18 @@ The Unity project sends runtime HTTP requests to the local Ollama API. The main 
 - `Assets/Scripts/InterceptPromptBuilder.cs`
 - `Assets/Scripts/SignalInterceptDemoController.cs`
 - `Assets/Scripts/MissionState.cs`
+- `Assets/Scripts/BugSquashMinigame.cs`
 
-The game requests structured output from Ollama using labelled fields, then validates the response before showing it to the player. Validation checks include empty output, unrecoverable missing structure, revealed classification labels, and real-world references that should not appear in the fictional setting. Scenario parsing also handles common local-model formatting drift such as bullets, loose labels, and source bias descriptions.
+The game requests structured output from Ollama using labelled fields, then validates the response before showing it to the player. Validation checks include empty output, unrecoverable missing structure, revealed classification labels, real-world references, LLM refusal detection, and chatty meta-commentary from the quality overseer. Scenario parsing handles common local-model formatting drift such as bullets, loose labels, and source bias descriptions.
+
+A configurable per-task model architecture is supported: scenario, intercept, outcome, and report generation can each target a different Ollama model via the Unity inspector, with the default `llama3.1:8b` used as fallback. An optional quality overseer model can review and refine every LLM output before display, toggled on or off for speed.
 
 ## Requirements
 
 - Unity 6000.3.9f1 or compatible Unity 6 version
 - Ollama installed locally
 - A local Ollama model installed, preferably `llama3.1:8b`
+- Optional: additional models for per-task routing (`llama3.2:3b`, `gemma2:2b`, etc.) and quality overseer
 - Windows build target for the final playable build
 
 ## Setup

@@ -209,3 +209,22 @@ Current recorded setup:
 - Test machine: 12th Gen Intel(R) Core(TM) i5-12450H, NVIDIA GeForce RTX 3060 Laptop GPU, 32 GB RAM, Windows 11 Home Single Language 10.0.26200.
 - Main playable flow: `SplashScene.unity` loads `OperationGreylineVisualScene.unity`.
 - Any later model or timeout changes made in the inspector should be recorded before final submission.
+
+
+## 12. Amendments (Post-Playtest, June 2026)
+
+The following changes were made after the original plan was written:
+
+**Multi-model per-task routing (F13):** The architecture was expanded from a single default model to per-task model selection. Scenario, intercept, outcome, and report generation each target a dedicated model configured in the Unity inspector. Only one model runs at a time — concurrency was avoided. If a task-specific model field is empty, the default `llama3.1:8b` handles that task as a fallback.
+
+**Intercept and reply pipeline split:** The combined intercept-and-replies prompt was split into two independent calls. `BuildInterceptOnlyPrompt` generates the in-world radio text, which is validated before `BuildRepliesOnlyPrompt` generates the three reply options with the confirmed intercept injected as context. This prevents a failed reply generation from forcing a full intercept regeneration.
+
+**Quality overseer with refusal and chatty-output hardening:** An optional second model (default `llama3.2:3b`) can review and refine every LLM output before display. The overseer prompt was strengthened to forbid greetings, explanations, headers, footers, and closing commentary. Two detection methods were added: `LooksLikeRefusal` (expanded from 8 to 19 refusal patterns including "I can't fulfill this request") and `LooksLikeChattyOverseerOutput` (detects conversational wrapper text like "I can assist you with refining the text"). When the overseer returns a refusal or chatty commentary, the system falls back to the valid raw output. A further guard in `ValidateIntercept` rejects any parsed intercept that still reads as a refusal.
+
+**Narrative recap injection (F12):** `MissionState` now maintains a round-by-round history list. `BuildNarrativeRecap` returns the history as a pipe-delimited string injected into intercept, reply, and outcome prompts, giving the LLM a structured record of everything that happened in prior rounds.
+
+**Bug Squash minigame (F7):** A terminal-themed click-to-squash minigame runs during intercept generation. Bugs spawn on screen during the LLM call and the player clicks to squash them. The minigame starts before the Ollama request and stops cleanly on all exit paths. A session high score appears on the HUD.
+
+**Scenario parsing resilience:** Scenario fields now use `ReadFieldOrDefault` with sensible fallback values instead of `ReadRequiredField`. Source bias parsing uses `TryParseClassification` with slot-based fallbacks (Friendly/Enemy/Deception). A scenario that is mostly well-formed but has one missing field parses successfully rather than triggering a full retry.
+
+**Per-model inspection:** Four inspector fields (`scenarioModelName`, `interceptModelName`, `outcomeModelName`, `reportModelName`) plus `qualityModelName` and an `enableQualityOverseer` toggle control the multi-model pipeline from the Unity editor.

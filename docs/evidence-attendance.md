@@ -2,7 +2,7 @@
 
 ## Event Description
 
-I attended the **Joburg Game Dev Meetup** on **Tuesday, 11 June 2026**. This is a recurring community event for game developers in Johannesburg, bringing together indie developers, hobbyists, professional designers, programmers, and artists from across Gauteng. I selected this event because it offered a real-world, hands-on audience outside the academic bubble — exactly the kind of unbiased, practitioner-level feedback that a live playtest needs. The event also met the lecturer's requirement for an approved public-facing game development gathering where attendees would actively engage with the prototype rather than passively observe.
+I attended the **Joburg Game Dev Meetup** on **Tuesday, 11 June 2026**. This is a recurring community event for game developers in Johannesburg, bringing together indie developers, hobbyists, professional designers, programmers, and artists from across Gauteng. I selected this event because it offered a real-world, hands-on audience outside the academic bubble. Exactly the kind of unbiased, practitioner-level feedback that a live playtest needs. The event also met the lecturer's requirement for an approved public-facing game development gathering where attendees would actively engage with the prototype rather than passively observe. We as a Game Design 3rd year group, all went together as well.
 
 The meetup included a "show-and-play" session where developers could pitch their projects briefly (approximately 15 seconds) and then offer their builds for hands-on playtesting. I presented **Could've Been Worse**, a darkly satirical intelligence desk simulation built in Unity with local LLM integration via Ollama. Two attendees played through a full five-round scenario and provided feedback.
 
@@ -10,9 +10,7 @@ The meetup included a "show-and-play" session where developers could pitch their
 
 ## Photo of Attendance
 
-![Photo at Joburg Game Dev Meetup, 11 June 2026](./images/event-photo.jpg)
-
-*Attending the Joburg Game Dev Meetup and presenting Could've Been Worse for playtesting.*
+Images are included into the submission file. They showcase myself at the event and one of my playtesters playing the game. 
 
 ---
 
@@ -40,7 +38,7 @@ The meetup included a "show-and-play" session where developers could pitch their
 
 ### Observed Bug
 
-- If the player clicks the **Report** button before selecting a reply, they become **locked out of the reply selection**, halting progress. This was reproduced during the playtest session.
+- If the player clicks the Report button before selecting a reply, they become locked out of the reply selection, halting progress. This was reproduced during the playtest session.
 
 ---
 
@@ -59,5 +57,5 @@ The meetup included a "show-and-play" session where developers could pitch their
 | Person | Role | Context |
 |---|---|---|
 | Playtester 1 | Hobbyist | A casual game enthusiast who attends meetups for interest and community, not as a professional developer. Provided usability and first-impression feedback. |
-| Playtester 2 | Indie Developer | An active independent game developer with released projects. Provided design-level and structural feedback informed by commercial game development experience. |
+| Playtester 2 | Indie Developer | An active independent game developer with projects in the pipeline. Provided design-level and structural feedback informed by their concurrent game development experience. |
 | Academic Assessor | Lecturer | Provided assessment-oriented feedback focused on the LLM integration architecture and how well the AI pipeline served the core gameplay loop. |

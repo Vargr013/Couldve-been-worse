@@ -143,3 +143,32 @@ The expected outcome is a functional Unity prototype demonstrating:
 - A controlled deduction-first gameplay loop.
 - Visible state changes and consequence tracking.
 - A documented, reproducible local LLM workflow.
+
+
+## Post-Playtest Amendments (June 2026)
+
+The following features were added after the Joburg Game Dev Meetup playtest:
+
+### Bug Squash Minigame
+
+A terminal-themed click-to-squash minigame runs during intercept generation. Bugs appear on screen while the LLM generates — the player clicks them for a session high score. This addresses the dead-time concern raised by playtesters and reinforces the "janky intelligence terminal" aesthetic.
+
+### Multi-Model Per-Task Routing
+
+The game now supports assigning different Ollama models to each task (scenario, intercept, outcome, report) via the Unity inspector. Only one model runs at a time, preserving the local-hardware constraint. An optional quality overseer model can review and refine every LLM output before display.
+
+### Quality Overseer With Refusal Detection
+
+The overseer was hardened against two failure modes discovered in testing: outright refusals ("I can't fulfill this request") and chatty commentary ("I can assist you with refining the text..."). Expanded detection methods reject these outputs and fall back to the valid raw text.
+
+### Narrative Context Retention
+
+A round-by-round narrative recap is injected into all LLM prompts, giving the model structured memory of everything that happened in prior rounds. This addresses the assessor's observation that the model "would struggle to keep context of the scenario."
+
+### Intercept/Reply Pipeline Split
+
+Intercept text and reply options are now generated in two independent LLM calls. This prevents a failed reply generation from forcing a complete intercept regeneration.
+
+### Scenario Parsing Resilience
+
+Scenario parsing was hardened with fallback values. If one field is missing or malformed, the scenario still parses successfully rather than triggering a full retry.

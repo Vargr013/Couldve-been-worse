@@ -57,5 +57,24 @@ The indie developer's suggestion to look at *Stories Untold* and his preference 
 | **Agreement** | The report screen clutter and text clipping were issues I was already aware of but had deprioritised. Hearing them flagged by a first-time player validated that they need attention. |
 | **Concern** | The softlock bug (F11) is a critical failure state — it blocks progress entirely with no recovery path. This needs an immediate fix. |
 | **Validation** | The positive reception of the humour (F10) confirmed that the satirical tone, which I worried might fall flat, actually landed. The structural praise (F4) also reassured me that the five-round loop works. |
-| **Discomfort** | Presenting a heavily AI-assisted game at a community event built around craftsmanship and the love of making games felt morally awkward. I sensed that the concept itself — an AI generating narrative content — may have been less exciting to this audience precisely because they value human authorship. |
+| **Discomfort** | Presenting a heavily AI-assisted game at a community event built around craftsmanship and the love of making games felt morally awkward. I sensed that the concept itself, an AI generating narrative content, may have been less exciting to this audience precisely because they value human authorship. |
 | **Recalibration** | The feedback collectively suggests that I should reposition the LLM in my own framing of the project: less "look what the AI does," more "here's a game where AI helps the pacing." The indie developer's reaction in particular made me reconsider how I pitch the project in future. |
+
+
+## Post-Playtest Actions (June 2026)
+
+| Feedback Item | Status | Summary |
+|---|---|---|
+| F1 (too much reading) | **Partially addressed** | Layout and typography improved; content volume retained as it is the core mechanic |
+| F2 (report clutter) | **Fixed** | Added readability plate behind mission log text with high-contrast backing |
+| F3 (text clipping) | **Fixed** | Changed vertical overflow from Truncate to Overflow; tightened font size range |
+| F4 (good structure/presentation) | **Retained** | Five-round loop preserved as designed |
+| F5 (minimalist rooms/desks) | **Noted** | Aspirational; visual scene direction already established |
+| F6 (narrative pull / unique hook) | **Partially addressed** | Narrative recap injection added; full authored narrative declined as scope-breaking |
+| F7 (minigame during generation) | **Implemented** | Bug Squash minigame runs during intercept generation with session high score |
+| F8 (Stories Untold reference) | **Declined** | Curated narrative backbone conflicts with procedural design goals |
+| F9 (consistent narrative) | **Partially addressed** | Recap injection maintains context across rounds; procedural variety retained |
+| F10 (dark humour received well) | **Retained** | Satirical tone confirmed as a strength |
+| F11 (report button softlock) | **Fixed** | Added HasPendingReply guard in GenerateIntercept, GenerateFinalReport, and HandlePrimaryAction |
+| F12 (LLM context retention) | **Addressed** | Narrative recap injection via BuildNarrativeRecap; round history passed to all prompts |
+| F13 (multiple AI models) | **Implemented** | Per-task model routing via inspector; quality overseer with refusal/chatty detection hardening |

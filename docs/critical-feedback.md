@@ -2,67 +2,38 @@
 
 ## What I Expected
 
-Before attending the Joburg Game Dev Meetup, I anticipated that the LLM integration would be the standout talking point. I had spent significant development effort on the Ollama pipeline — structured prompts, labelled-field parsing, validation with blocking rules, retry logic for malformed output, and a strict separation of concerns where Unity owns all game state and the LLM only handles fictional text. I assumed attendees would ask about the model choice, how the prompts were engineered, whether local inference was fast enough, and how I handled the unpredictability of generative output.
+I anticipated the LLM integration would be a standout talking point. I had built structured prompts, labelled-field parsing, validation with blocking rules, and retry logic for malformed output. I assumed attendees would ask about model choice, prompt engineering, inference speed, and handling generative unpredictability.
 
-In terms of gameplay feedback, I expected comments about the reading volume — the game is text-heavy by design — and possibly remarks about the visual polish, since the art assets were generated and the UI was assembled quickly. I assumed the humour would be divisive; satirical tone often is.
+In terms of gameplay, I expected comments about reading volume (the game is text-heavy by design), remarks about visual polish since the art was generated, and that the dark satirical tone would be divisive.
+
+My expectations did not align with the actual feedback at all.
 
 ## What Surprised Me
 
-The biggest surprise was the near-total indifference to the LLM integration. Not a single attendee asked about the AI pipeline — not the model, not the prompts, not the validation system, not the local vs. cloud trade-off. The LLM was treated as invisible infrastructure. This was simultaneously humbling and instructive: what felt like the core technical achievement of the project was, to a player, just part of the furniture. They cared about what they could see and do — the narrative pull, the visual clarity, the pacing.
+The biggest surprise was near-total indifference to the LLM integration. Not a single attendee asked about the AI pipeline — not the model, prompts, validation, or local vs. cloud trade-off. What felt like the core technical achievement was, to players, just furniture. They cared about narrative pull, visual clarity, and pacing.
 
-A second surprise: the indie developer's suggestion to look at *Stories Untold* and his preference for a consistent authored narrative over procedural generation. I had assumed the per-round procedural variety would be the selling point. Instead, he wanted a tighter, more hand-crafted experience where only the responses were generated. This directly challenges the project's original design thesis — that full procedural generation of scenarios and intercepts creates replayability. It turns out that players may prefer one coherent story over five procedurally-variable ones.
+A second surprise: the indie developer's preference for an authored narrative over procedural generation. I had assumed procedural variety would be the selling point — players may prefer one coherent story over five procedurally-variable ones.
 
-Attendees also completely ignored aspects I thought would draw focus. No one commented on the mission values system (Corridor Stability, Objective Status, Confusion, etc.), the clue chips, the source profiles, or the hidden-truth deduction mechanic. These systems — which I considered the real gameplay depth — went unremarked. The feedback instead centred on surface-level experience: readability, hook, and pacing during generation waits.
+Attendees also ignored the aspects I considered strongest. No one commented on the mission values system, source profiles, or hidden-truth deduction mechanic. Feedback centred entirely on surface-level experience: readability, hook, and pacing. The deepest design work went unremarked.
 
 ## What I Chose Not to Implement (With Justification)
 
-### Minigame During LLM Generation (F7)
+The minigame (F7) and multi-model pipeline (F13) were initially declined but later implemented. The Bug Squash minigame lets players squash bugs during LLM calls — built after quality overseer latency made passive waiting feel longer. Per-task model routing runs without concurrency: each prompt type targets a dedicated model, with an optional overseer for second-pass polish, later hardened against refusal and chatty-commentary outputs.
 
-**Declined.** While technically feasible in Unity (a simple asynchronous minigame could run on a coroutine while the Ollama request is in flight), this would add scope without addressing the root problem. On adequate hardware with `llama3.1:8b`, generation typically completes within 10-20 seconds. Adding a minigame risks making that wait feel *longer* by demanding active attention during what is otherwise a brief pause. The better solution is to reduce perceived wait time through UI feedback (a progress indicator, lore snippets, or a "transmission incoming" animation) rather than a full minigame.
+The narrative restructure (F8, F9) was declined — re-architecting around a pre-authored backbone would rewrite core systems and conflicts with the procedural scope. Reducing reading volume (F1) was partially declined: reading is the deduction mechanic, but scannable layouts reduce perceived load.
 
-### Multiple AI Models for Context Control (F13)
+Some feedback was subjective or contradictory. The clearest contradiction is between F1 and F6+F9 — richer storytelling demands more text, reflecting player types irreconcilable in a deduction-first game. The multi-model suggestion was initially viewed as subjective but proved actionable. The *Stories Untold* reference highlights an aspirational taste divide between curated and procedural experiences.
 
-**Implemented with adaptation.** The assessor's suggestion of using multiple AI models was initially declined based on the assumption that it required running multiple models concurrently — doubling latency and memory requirements on consumer hardware. Upon further consideration, the underlying insight was valid: a single general-purpose model making every call misses the opportunity to use task-specialised models. The implemented approach routes each prompt type to a task-appropriate model via inspector-configurable fields. Scenario generation targets `llama3.1:8b` for creative long-form output. Intercept and reply generation can use `llama3.2:3b` for faster, more focused structured output. Outcome narration and final report generation each have their own model assignments. This gives the developer precise control over which model handles which stage of the pipeline without adding concurrent inference overhead. Each model can be installed or pulled independently; if a task-specific model is empty, the default model is used as a fallback.
-
-A further quality overseer layer was added: an optional second model that reviews and refines every LLM output before it reaches the player. This "overwatch" model checks for coherence, tone consistency, real-world reference leakage, and clarity — polishing the primary model's raw output. It runs sequentially after the primary generation and is toggled off by default for speed. When enabled, every scenario, intercept, outcome, and final report passes through a quality gate, directly addressing the assessor's request for "more AIs" and "better control."
-
-### Full Narrative Restructure (F8, F9)
-
-**Declined.** Re-architecting the game around a pre-authored narrative backbone with procedural response generation only (*Stories Untold*-style) would require a fundamental rewrite of the mission state machine, the prompt builder, and the controller flow. It also conflicts with the project's stated scope: a five-round procedural loop where each playthrough is unique. This was the design goal approved at the start of the project. Reducing procedural scope would make the project more narratively polished but less technically demonstrative of the LLM integration brief.
-
-### Reducing Reading Volume (F1)
-
-**Partially declined.** The game is a deduction-first experience. Reading is the core mechanic — the intercept text, source profiles, mission values, and clue chips are what the player engages with to make decisions. Drastically cutting text would hollow out the gameplay. However, I acknowledge that presentation can be improved: shorter paragraphs, more scannable layouts, and better typographic hierarchy can reduce the *perceived* reading load without removing content.
-
-## Subjective and Contradictory Feedback
-
-Some feedback items are inherently subjective or in direct tension with each other, which affects how they can be actioned.
-
-The most notable contradiction is between F1 (the hobbyist's concern about too much reading) and F6 plus F9 (the indie developer's desire for a stronger narrative pull and a consistent authored story). Reducing text volume and deepening narrative engagement pull in opposite directions — richer storytelling requires more text, not less. This tension likely reflects different player types: one wants a quick, scannable experience while the other wants atmospheric immersion. Both are valid preferences, but they cannot be fully satisfied simultaneously within a deduction-first game. My resolution is to lean towards the game's intended audience — players who engage with text as a mechanic — while improving typographic presentation to reduce perceived reading fatigue.
-
-The assessor's suggestion of a multi-model architecture (F13) was initially considered a subjective technical opinion but has since been implemented as a per-task model selection system. Rather than running models concurrently, the project now routes each prompt type (scenario, intercept, outcome, report) to a dedicated task-appropriate model, configurable in the Unity inspector. This addresses the assessor's concern about "more AIs for better control" without requiring multiple models to be loaded simultaneously.
-
-The *Stories Untold* reference (F8) also highlights a subjective taste divide. That game is a curated, linear narrative experience. Could've Been Worse is designed for procedural replay. The feedback is useful as an aspirational direction but cannot be implemented literally without changing the project's genre.
 
 ## Evaluation of Feasibility
 
-All suggested changes are *technically* possible within the Unity + Ollama toolset, but feasibility must be weighed against the project's scope, timeline, and design intent:
-
-- **UI fixes (F2, F3, F11):** High feasibility, low risk. These are straightforward UGUI adjustments and bug fixes that do not touch the core systems.
-- **Minigame (F7):** Feasible but low return on effort. The generation wait is already short and shrinking as hardware improves.
-- **Multi-model pipeline (F13):** Implemented as per-task model selection. Each prompt type is routed to a dedicated model (scenario, intercept, outcome, report), configurable via inspector. Models are not loaded concurrently — only one model runs at a time — so the approach preserves the "runs on a laptop" constraint while giving the developer fine-grained control over which model handles each stage.
-- **Narrative restructuring (F8, F9):** Feasible but out of scope. This would be a different game.
-- **Reducing reading (F1):** Feasible through layout and presentation improvements but not through content removal without undermining the deduction mechanic.
+All suggestions were technically possible within the Unity + Ollama toolset under local inference constraints. UI fixes were straightforward UGUI adjustments. Performance considerations initially made the multi-model suggestion seem unrealistic (concurrent models would double memory and latency), but sequential routing resolved this. The minigame is a lightweight coroutine with negligible overhead. The narrative restructure is feasible but would compromise the core experience by replacing procedural variety with a fixed narrative. Reading reduction through content removal would hollow out the deduction mechanic; layout improvements preserve it.
 
 
 ## Final Judgement
 
-The feedback that ultimately shaped my refinements falls into two categories: **immediate fixes** and **philosophical recalibrations**.
+The feedback that shaped my refinements includes the three priority fixes — softlock bug, report clutter, and text clipping — plus playtesting-driven improvements: splitting intercept and reply generation, hardening scenario parsing with fallback values, and strengthening quality overseer refusal detection. The minigame, initially declined, was implemented when testing validated its value.
 
-The softlock bug (F11), report screen clutter (F2), and text clipping (F3) will be fixed. These are low-cost, high-impact changes that improve the first-time player experience without altering the game's identity.
+The narrative restructure was declined because it would require rewriting core systems and replacing procedural scope with a fixed narrative — a different game. Reading reduction was partially declined; content cuts would hollow out the deduction mechanic, but layout improvements were embraced.
 
-Feedback I declined — the minigame and the narrative restructure — was declined not because it was bad advice, but because it would either compromise the core design, exceed the project's technical constraints, or demand effort disproportionate to the benefit.
-
-What I learned from this experience is that critique of an AI-driven game is fundamentally critique of the *game*, not the AI. Players do not separate the technology from the experience. If the LLM adds friction — long waits, incoherent context, walls of text — it is a liability regardless of how clever the pipeline is. If it adds something players genuinely enjoy — in this case, darkly funny reply options — it earns its place. The bar for AI in games is not "does it work?" but "does it make the game better than it would be without it?"
-
-This experience also forced me to confront the discomfort of presenting AI-assisted work to a community built on human craftsmanship. The lesson is not to hide the AI but to lead with the game. In future, I will pitch the premise, the tone, and the player experience first — and let the LLM integration be discovered as a supporting detail, not a headline.
+This experience reshaped my understanding of critique in AI-driven development. If the LLM adds friction it is a liability; if it adds enjoyment it earns its place. The bar is not "does it work?" but "does it make the game better?" Presenting AI-assisted work to a craftsmanship-focused community taught me to lead with premise, tone, and player experience — the game must be the headline. 

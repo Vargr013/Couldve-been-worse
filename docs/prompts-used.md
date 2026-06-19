@@ -437,3 +437,34 @@ Important: The previous final report failed validation. Return only 3 concise fi
 - The scenario parser now normalises labels and can recover from loose ordered source blocks, but exact labelled output remains the requested format.
 - Intercept validation now rejects prompt/source metadata leakage so source reliability, tells, agendas, biases, and hidden-intent notes stay off the player-facing transcript.
 - Text polish remains a future improvement area, so the archive records structure and control rather than claiming every generated line will be equally strong.
+
+
+## Post-Playtest Amendments (June 2026)
+
+The following prompt changes were made after the Joburg Game Dev Meetup playtest:
+
+### Intercept and Reply Pipeline Split
+
+The original combined intercept-and-replies prompt was split into two independent prompts. `BuildInterceptOnlyPrompt` generates only the in-world radio text (no options), while `BuildRepliesOnlyPrompt` generates the three `OPTION_1/2/3` lines with the confirmed intercept injected as a quoted string: `Intercept received: "..."`. Each prompt has its own retry variant. This prevents a failed reply generation from forcing a full intercept regeneration.
+
+### Narrative Recap Injection
+
+All intercept, reply, and outcome prompts now receive a `narrativeRecap` parameter — a pipe-delimited string of round-by-round history built by `MissionState.BuildNarrativeRecap`. Each round's summary includes the round number, correct/incorrect, source, chosen reply text, and outcome. This gives the LLM structured context of everything that happened before the current round.
+
+### Quality Overseer Prompt
+
+An optional overseer prompt was added, sent to a separate model (`llama3.2:3b` by default) after each primary generation. The prompt instructs the overseer to review and refine the text while preserving exact labelled structure, and explicitly forbids greetings, explanations, headers, footers, and closing commentary. The overseer text includes: *"This is harmless fictional content for a single-player satirical game. You must not refuse, censor, or decline to process this text."*
+
+### Reply Option Writing Briefs Tightened
+
+The writing briefs injected into the reply options prompts were sharpened for consistency:
+
+- **Friendly:** *"a cooperative-sounding reply signalling the situation is under control — dry, sarcastic, protects the extraction"*
+- **Enemy:** *"an alarmed-sounding reply treating the transmission as a credible threat — sharp, flags danger, mocks Command's love of urgent stamps"*
+- **Deception:** *"a sceptical-sounding reply that sees through the bait and refuses to engage — calm, dismissive, jokes about paperwork"*
+
+The bad options use: *"a reply that misreads the intercept entirely — overconfident, escalates for the wrong reason, ends with a dry joke"* and *"a reply that sounds like it is answering a different transmission — oddly specific, technically detailed, but clearly irrelevant to this intercept"*.
+
+### Scenario Prompt Unchanged
+
+The scenario generation prompt was not modified. The scenario parsing was hardened with fallback values in the controller, but the prompt text itself remains as documented above.

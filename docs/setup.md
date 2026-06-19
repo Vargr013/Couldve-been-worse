@@ -213,3 +213,31 @@ The final submission includes:
 - Prompt archive in `docs/prompts-used.md`
 
 The two recorded assessment videos and the final Windows build are external submission assets.
+
+
+## 9. Post-Playtest Setup Amendments (June 2026)
+
+### Optional Multi-Model Setup
+
+The project now supports per-task model routing. To use different models for different tasks:
+
+1. Pull the additional models you want to use:
+
+   ```powershell
+   ollama pull llama3.2:3b
+   ollama pull gemma2:2b
+   ```
+
+2. In the Unity inspector on the `SignalInterceptDemoController`, assign models to the per-task fields:
+   - `scenarioModelName` — model for scenario generation (defaults to `modelName`)
+   - `interceptModelName` — model for intercept and reply generation
+   - `outcomeModelName` — model for outcome narration
+   - `reportModelName` — model for final report generation
+
+3. To enable the quality overseer, check `enableQualityOverseer` and set `qualityModelName` (default `llama3.2:3b`).
+
+All per-task fields are optional — if left empty, the default `llama3.1:8b` handles that task.
+
+### Bug Squash Minigame
+
+No additional setup is required. The minigame UI is built automatically at runtime. To place the minigame on a dedicated GameObject, drag a `GameObject` named "MiniGame" into the `miniGameContainer` inspector slot on the controller.
