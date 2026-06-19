@@ -181,7 +181,7 @@ public sealed class MissionState
         CommandEmbarrassment = 2;
         CurrentIntercept = string.Empty;
         CurrentSource = null;
-        SituationSummary = scenario.RoundGoal;
+        SituationSummary = "The situation is developing. Command expects answers before lunch.";
         LatestConsequence = "No consequences yet. Command is treating this as proof of good planning.";
         LatestSupervisorRemark = string.Empty;
         consequences.Clear();
@@ -333,8 +333,6 @@ public sealed class ScenarioBrief
         string stake,
         string complication,
         string commandBadIdea,
-        string toneDetail,
-        string roundGoal,
         SignalSourceProfile[] sources)
     {
         Title = title;
@@ -343,8 +341,6 @@ public sealed class ScenarioBrief
         Stake = stake;
         Complication = complication;
         CommandBadIdea = commandBadIdea;
-        ToneDetail = toneDetail;
-        RoundGoal = roundGoal;
         Sources = sources;
     }
 
@@ -354,8 +350,6 @@ public sealed class ScenarioBrief
     public string Stake { get; }
     public string Complication { get; }
     public string CommandBadIdea { get; }
-    public string ToneDetail { get; }
-    public string RoundGoal { get; }
     public IReadOnlyList<SignalSourceProfile> Sources { get; }
 }
 

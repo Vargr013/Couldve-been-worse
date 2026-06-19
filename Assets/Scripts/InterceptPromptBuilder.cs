@@ -16,7 +16,7 @@ public static class InterceptPromptBuilder
     {
         return OperationContext + "\n\n" +
                "Create one 5-round fictional scenario. Return only these labelled lines. No intro, markdown, bullets, numbering, or code fence. Keep values under 14 words. Source biases must be exactly Friendly, Enemy, and Deception, with no extra words on bias lines.\n" +
-               "SCENARIO_TITLE:\nLOCATION:\nPLAYER_TASK:\nCIVILIAN_OR_OPERATIONAL_STAKE:\nCOMPLICATION:\nCOMMAND_BAD_IDEA:\nTONE_DETAIL:\nROUND_GOAL:\n" +
+               "SCENARIO_TITLE:\nLOCATION:\nPLAYER_TASK:\nCIVILIAN_OR_OPERATIONAL_STAKE:\nCOMPLICATION:\nCOMMAND_BAD_IDEA:\n" +
                "SOURCE_1_CODE:\nSOURCE_1_PUBLIC:\nSOURCE_1_BIAS:\nSOURCE_1_RELIABILITY:\nSOURCE_1_TELL:\nSOURCE_1_AGENDA:\n" +
                "SOURCE_2_CODE:\nSOURCE_2_PUBLIC:\nSOURCE_2_BIAS:\nSOURCE_2_RELIABILITY:\nSOURCE_2_TELL:\nSOURCE_2_AGENDA:\n" +
                "SOURCE_3_CODE:\nSOURCE_3_PUBLIC:\nSOURCE_3_BIAS:\nSOURCE_3_RELIABILITY:\nSOURCE_3_TELL:\nSOURCE_3_AGENDA:";

@@ -386,7 +386,6 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             FindNamedComponent<Button>(root, "Reply Option 3")
         };
 
-        EnhanceMissionLogReadability();
 
         if (briefingPanel == null || interceptPanel == null || decisionPanel == null || logPanel == null ||
             briefingText == null || statsText == null || statusText == null || transmissionText == null || decisionHelperText == null ||
@@ -1288,21 +1287,19 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             $"Task: {scenario.PlayerTask}\n" +
             $"Stake: {scenario.Stake}\n" +
             $"Complication: {scenario.Complication}\n" +
-            $"Command's Bad Idea: {scenario.CommandBadIdea}\n\n" +
+            $"Command's Idea: {scenario.CommandBadIdea}\n\n" +
             $"Situation: {missionState.SituationSummary}\n\n" +
-            $"Corridor Stability: {BuildValueBar(missionState.CorridorStability)}\n" +
-            $"Objective Status: {BuildValueBar(missionState.ObjectiveStatus)}\n" +
-            $"Confusion: {BuildValueBar(missionState.Confusion)}\n" +
-            $"Command Embarrassment: {BuildValueBar(missionState.CommandEmbarrassment)}\n\n" +
-            $"Current Grade: {FormatMissionGrade(missionState.Grade)}\n" +
-            $"Latest Consequence: {missionState.LatestConsequence}\n\n" +
-            $"Source Notes:\n{BuildSourceNotes()}\n\n" +
-            $"Desk Detail: {scenario.ToneDetail}";
+            $"Status: {BuildValueBar(missionState.CorridorStability)}  Corridor\n" +
+            $"        {BuildValueBar(missionState.ObjectiveStatus)}  Objectives\n" +
+            $"        {BuildValueBar(missionState.Confusion)}  Confusion\n" +
+            $"        {BuildValueBar(missionState.CommandEmbarrassment)}  Embarrassment\n\n" +
+            $"Grade: {FormatMissionGrade(missionState.Grade)}     Consequence: {missionState.LatestConsequence}\n\n" +
+            $"Sources:\n{BuildSourceNotes()}";
     }
 
     private void AppendMissionLog(string entry)
     {
-        missionLog = string.IsNullOrWhiteSpace(missionLog) ? entry : missionLog + "\n\n" + entry;
+        missionLog = entry;
         missionLogText.text = missionLog;
         if (supervisorNoteText != null)
         {
@@ -1766,8 +1763,6 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         string stake = ReadFieldOrDefault(fields, "CIVILIAN_OR_OPERATIONAL_STAKE", "Morale is fragile");
         string complication = ReadFieldOrDefault(fields, "COMPLICATION", "Reports contradict each other");
         string commandBadIdea = ReadFieldOrDefault(fields, "COMMAND_BAD_IDEA", "Command wants a fast public answer");
-        string toneDetail = ReadFieldOrDefault(fields, "TONE_DETAIL", "Everyone is pretending to be calm");
-        string roundGoal = ReadFieldOrDefault(fields, "ROUND_GOAL", "Read the sources before acting");
         SignalSourceProfile[] sources =
         {
             ParseSource(fields, 1),
@@ -1775,7 +1770,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             ParseSource(fields, 3)
         };
 
-        return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, toneDetail, roundGoal, sources.ToArray());
+        return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, sources.ToArray());
     }
 
     private static ScenarioBrief ParseLooseScenario(string response)
@@ -1794,8 +1789,6 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         string stake = ReadOrderedScenarioValue(lines, ref index, "Civilian confidence is collapsing");
         string complication = ReadOrderedScenarioValue(lines, ref index, "The available reports contradict each other");
         string commandBadIdea = ReadOrderedScenarioValue(lines, ref index, "Command wants a fast public answer");
-        string toneDetail = ReadOrderedScenarioValue(lines, ref index, "Everyone is calm in the least helpful way");
-        string roundGoal = ReadOrderedScenarioValue(lines, ref index, "Read the sources before acting");
         var sources = new List<SignalSourceProfile>();
 
         while (index < lines.Count && sources.Count < 3)
@@ -1814,7 +1807,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             throw new GeneratedTextValidationException("Ollama did not return three complete signal sources.");
         }
 
-        return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, toneDetail, roundGoal, sources.ToArray());
+        return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, sources.ToArray());
     }
 
     private static string ReadOrderedScenarioValue(IReadOnlyList<string> lines, ref int index, string fallback)
@@ -2289,8 +2282,6 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         ValidateCommonResponse(scenario.Stake);
         ValidateCommonResponse(scenario.Complication);
         ValidateCommonResponse(scenario.CommandBadIdea);
-        ValidateCommonResponse(scenario.ToneDetail);
-        ValidateCommonResponse(scenario.RoundGoal);
 
         if (scenario.Sources == null || scenario.Sources.Count != 3)
         {
@@ -2812,44 +2803,6 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         eventSystem.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
     }
 
-    private void EnhanceMissionLogReadability()
-    {
-        if (missionLogText == null)
-        {
-            return;
-        }
-
-        missionLogText.verticalOverflow = VerticalWrapMode.Overflow;
-        missionLogText.resizeTextForBestFit = true;
-        missionLogText.resizeTextMinSize = 11;
-        missionLogText.resizeTextMaxSize = 16;
-
-        Transform parent = missionLogText.transform.parent;
-        if (parent == null)
-        {
-            return;
-        }
-
-        Image existingPlate = parent.GetComponentsInChildren<Image>(true)
-            .FirstOrDefault(img => img.name.Contains("Plate") && img.transform != missionLogText.transform);
-
-        if (existingPlate != null)
-        {
-            existingPlate.color = new Color(0.07f, 0.09f, 0.07f, 0.84f);
-        }
-        else
-        {
-            Image plate = CreateImage("Mission Log Readability Plate", parent, new Color(0.07f, 0.09f, 0.07f, 0.84f));
-            plate.raycastTarget = false;
-            RectTransform plateRect = plate.rectTransform;
-            RectTransform textRect = missionLogText.rectTransform;
-            plateRect.anchorMin = textRect.anchorMin;
-            plateRect.anchorMax = textRect.anchorMax;
-            plateRect.offsetMin = textRect.offsetMin - new Vector2(10f, 10f);
-            plateRect.offsetMax = textRect.offsetMax + new Vector2(10f, 10f);
-            plateRect.SetAsFirstSibling();
-        }
-    }
 
     private static void StretchToParent(RectTransform rectTransform, float left, float top, float right, float bottom)
     {
