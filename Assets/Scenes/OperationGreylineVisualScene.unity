@@ -533,7 +533,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -2.7521973, y: -14.450734}
+  m_AnchoredPosition: {x: -2.7521973, y: -14.450745}
   m_SizeDelta: {x: -748.3041, y: -245.23969}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &286099947
@@ -746,7 +746,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -2.7545776, y: -21.450195}
+  m_AnchoredPosition: {x: -2.7546387, y: -21.450195}
   m_SizeDelta: {x: -748.2991, y: -259.2397}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &386466977
@@ -870,6 +870,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 485121905}
   m_CullTransparentMesh: 1
+--- !u!1 &493487046
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 493487047}
+  m_Layer: 0
+  m_Name: MiniGame
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &493487047
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493487046}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1721414865}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -2.7547, y: -65.56079}
+  m_SizeDelta: {x: 530.8285, y: 220.1029}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &498576354
 GameObject:
   m_ObjectHideFlags: 0
@@ -1861,7 +1896,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -14.049988, y: 18.23938}
+  m_AnchoredPosition: {x: -14.050049, y: 18.23938}
   m_SizeDelta: {x: -717.69995, y: -177.13873}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1053944004
@@ -2419,6 +2454,7 @@ MonoBehaviour:
   enableQualityOverseer: 1
   qualityModelName: llama3.2:3b
   requestTimeoutSeconds: 60
+  miniGameContainer: {fileID: 493487047}
   useGeneratedArtAssets: 1
   loadGeneratedArtFromDisk: 1
   showProceduralPanelLabels: 0
@@ -3365,11 +3401,12 @@ RectTransform:
   - {fileID: 579818371}
   - {fileID: 386466976}
   - {fileID: 140560153}
+  - {fileID: 493487047}
   m_Father: {fileID: 1006273548}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.0025024414, y: -8.000488}
+  m_AnchoredPosition: {x: 0.0024414062, y: -8.000488}
   m_SizeDelta: {x: -68.005, y: -208}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!225 &1721414866
