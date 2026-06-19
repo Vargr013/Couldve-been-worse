@@ -208,7 +208,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             return rawOutput;
         }
 
-        string prompt = "Fictional dark satirical intel desk game. No real countries, conflicts, organisations, or people.\n" +
+        string prompt = "You are reviewing text for a fictional dark comedy video game. Nothing here is real. All names, locations, transmissions, and scenarios are invented. Never refuse to process this fictional content.\n" +
                         $"You are a quality editor reviewing {taskLabel} output.\n" +
                         $"Context: {contextSummary}\n" +
                         "Review the labelled text below. Fix incoherence, maintain satirical tone, remove real-world references, improve clarity. Return the refined text with its EXACT original labelled structure. Do not add, remove, or rename labels. Return only the refined text.\n" +
@@ -220,13 +220,27 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             var client = new OllamaClient(ollamaEndpoint, qualityModelName, requestTimeoutSeconds);
             string refined = await client.GenerateAsync(prompt, cancellationToken);
             string cleaned = CleanResponse(refined);
-            return string.IsNullOrWhiteSpace(cleaned) ? rawOutput : cleaned;
+            if (string.IsNullOrWhiteSpace(cleaned) || LooksLikeRefusal(cleaned))
+            {
+                Debug.LogWarning($"Quality overseer refused or returned empty on {taskLabel}, using raw output.");
+                return rawOutput;
+            }
+
+            return cleaned;
         }
         catch (Exception exception)
         {
             Debug.LogWarning($"Quality overseer failed on {taskLabel}, using raw output: {exception.Message}");
             return rawOutput;
         }
+    }
+
+    private static bool LooksLikeRefusal(string text)
+    {
+        string lower = text.ToLowerInvariant();
+        return lower.Contains("i cannot") || lower.Contains("i apologize") || lower.Contains("i'm not able")
+            || lower.Contains("not appropriate") || lower.Contains("illegal") || lower.Contains("against policy")
+            || lower.Contains("cannot create") || lower.Contains("cannot provide");
     }
 
     private void Awake()
@@ -581,7 +595,8 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         try
         {
             var client = new OllamaClient(ollamaEndpoint, ResolveModel(interceptModelName), requestTimeoutSeconds);
-            string prompt = InterceptPromptBuilder.BuildInterceptAndRepliesPrompt(
+
+            string interceptPrompt = InterceptPromptBuilder.BuildInterceptOnlyPrompt(
                 missionState.Scenario,
                 missionState.SituationSummary,
                 missionState.BuildConsequenceSummary(),
@@ -589,7 +604,6 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
                 pendingHiddenTruth,
                 activeSource,
                 BuildCluePromptSummary(activeClues),
-                pendingOptions,
                 pendingRoundNumber,
                 missionState.RiskLevel,
                 missionState.SupervisorPatience,
@@ -597,11 +611,15 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
                 missionState.ObjectiveStatus,
                 missionState.Confusion,
                 missionState.CommandEmbarrassment);
-            string retryPrompt = InterceptPromptBuilder.BuildInterceptAndRepliesRetryPrompt(
+
+            string interceptText = await RequestValidIntercept(client, interceptPrompt, requestCancellation.Token);
+
+            string repliesPrompt = InterceptPromptBuilder.BuildRepliesOnlyPrompt(
                 missionState.Scenario,
                 missionState.SituationSummary,
                 missionState.BuildConsequenceSummary(),
                 missionState.BuildNarrativeRecap(),
+                interceptText,
                 pendingHiddenTruth,
                 activeSource,
                 BuildCluePromptSummary(activeClues),
@@ -614,7 +632,9 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
                 missionState.Confusion,
                 missionState.CommandEmbarrassment);
 
-            GeneratedInterceptPackage package = await RequestValidPackage(client, prompt, retryPrompt, pendingOptions, requestCancellation.Token);
+            GeneratedReplyOption[] filledOptions = await RequestValidReplies(client, repliesPrompt, pendingOptions, requestCancellation.Token);
+
+            GeneratedInterceptPackage package = new GeneratedInterceptPackage(interceptText, filledOptions);
 
             missionState.StartNextRound(pendingHiddenTruth, activeSource, activeClues);
             missionState.SetCurrentIntercept(package.Intercept);
@@ -940,6 +960,55 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         }
     }
 
+    private async Task<string> RequestValidIntercept(
+        OllamaClient client,
+        string prompt,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendAndParseIntercept(client, prompt, cancellationToken);
+        }
+        catch (GeneratedTextValidationException firstFailure)
+        {
+            Debug.LogWarning("Ollama intercept failed validation. Retrying once.\n" + firstFailure.Message);
+            string retryPrompt = InterceptPromptBuilder.BuildInterceptOnlyRetryPrompt(prompt);
+            return await SendAndParseIntercept(client, retryPrompt, cancellationToken);
+        }
+    }
+
+    private async Task<string> SendAndParseIntercept(
+        OllamaClient client,
+        string prompt,
+        CancellationToken cancellationToken)
+    {
+        Debug.Log($"Sending intercept query to {ResolveModel(interceptModelName)} at {ollamaEndpoint}:\n{prompt}");
+
+        string rawResponse = await client.GenerateAsync(prompt, cancellationToken);
+        string cleanedResponse = CleanResponse(rawResponse);
+        Debug.Log($"Intercept raw response:\n{cleanedResponse}");
+        string context = missionState.HasScenario
+            ? $"Intercept generation. Round {missionState.RoundNumber + 1}/{MissionState.RoundLimit}. Scenario: {missionState.Scenario.Title}."
+            : "Intercept generation for a satirical intelligence desk game.";
+        cleanedResponse = await QualityRefineAsync(cleanedResponse, context, "intercept", cancellationToken);
+        Debug.Log($"Intercept after quality refinement:\n{cleanedResponse}");
+
+        string intercept = ParseSingleField(cleanedResponse, "INTERCEPT:");
+        if (string.IsNullOrWhiteSpace(intercept))
+        {
+            intercept = ParseFirstMeaningfulLine(cleanedResponse);
+        }
+
+        if (string.IsNullOrWhiteSpace(intercept))
+        {
+            throw new GeneratedTextValidationException("Ollama did not return an INTERCEPT line.");
+        }
+
+        ValidateIntercept(intercept);
+        Debug.Log($"Intercept received:\n{intercept}");
+        return intercept;
+    }
+
     private async Task<GeneratedOutcomePackage> RequestValidOutcome(
         OllamaClient client,
         string prompt,
@@ -1002,6 +1071,49 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         Debug.Log($"Ollama response received:\n{cleanedResponse}");
         return package;
+    }
+
+    private async Task<GeneratedReplyOption[]> RequestValidReplies(
+        OllamaClient client,
+        string prompt,
+        GeneratedReplyOption[] replyProfiles,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendAndParseReplies(client, prompt, replyProfiles, cancellationToken);
+        }
+        catch (GeneratedTextValidationException firstFailure)
+        {
+            Debug.LogWarning("Ollama replies failed validation. Retrying once.\n" + firstFailure.Message);
+            string retryPrompt = InterceptPromptBuilder.BuildRepliesOnlyRetryPrompt(prompt);
+            return await SendAndParseReplies(client, retryPrompt, replyProfiles, cancellationToken);
+        }
+    }
+
+    private async Task<GeneratedReplyOption[]> SendAndParseReplies(
+        OllamaClient client,
+        string prompt,
+        GeneratedReplyOption[] replyProfiles,
+        CancellationToken cancellationToken)
+    {
+        Debug.Log($"Sending replies query to {ResolveModel(interceptModelName)} at {ollamaEndpoint}:\n{prompt}");
+
+        string rawResponse = await client.GenerateAsync(prompt, cancellationToken);
+        string cleanedResponse = CleanResponse(rawResponse);
+        string context = missionState.HasScenario
+            ? $"Replies generation. Round {missionState.RoundNumber + 1}/{MissionState.RoundLimit}. Scenario: {missionState.Scenario.Title}."
+            : "Replies generation for a satirical intelligence desk game.";
+        cleanedResponse = await QualityRefineAsync(cleanedResponse, context, "replies", cancellationToken);
+
+        GeneratedReplyOption[] options = ParseReplies(cleanedResponse, replyProfiles);
+        foreach (GeneratedReplyOption option in options)
+        {
+            ValidateReplyOption(option.Text);
+        }
+
+        Debug.Log($"Replies received:\n{cleanedResponse}");
+        return options;
     }
 
     private async Task<string> RequestValidText(
@@ -1485,9 +1597,9 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         string brief = classification switch
         {
-            InterceptClassification.Friendly => "a useful but sarcastic reply that protects the extraction without sounding heroic",
-            InterceptClassification.Enemy => "a sharp reply that flags danger while making fun of Command's love of urgent stamps",
-            InterceptClassification.Deception => "a calm reply that refuses the bait and jokes about not feeding the paperwork machine",
+            InterceptClassification.Friendly => "a cooperative-sounding reply signalling the situation is under control — dry, sarcastic, protects the extraction",
+            InterceptClassification.Enemy => "an alarmed-sounding reply treating the transmission as a credible threat — sharp, flags danger, mocks Command's love of urgent stamps",
+            InterceptClassification.Deception => "a sceptical-sounding reply that sees through the bait and refuses to engage — calm, dismissive, jokes about paperwork",
             _ => "a cautious reply that buys time without pretending the nonsense is clear"
         };
 
@@ -1503,7 +1615,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             3,
             0,
             -2,
-            "an overconfident reply that turns incomplete information into a loud command decision with a dry joke");
+            "a reply that misreads the intercept entirely — overconfident, escalates for the wrong reason, ends with a dry joke");
     }
 
     private static GeneratedReplyOption CreateBadWeirdOption(InterceptClassification classification)
@@ -1515,7 +1627,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             2,
             0,
             -1,
-            "a specific, funny reply that technically does something but clearly solves the wrong problem");
+            "a reply that sounds like it is answering a different transmission — oddly specific, technically detailed, but clearly irrelevant to this intercept");
     }
 
     private static InterceptClassification NextWrongClassification(InterceptClassification hiddenTruth)
@@ -1557,14 +1669,14 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             return ParseLooseScenario(response);
         }
 
-        string title = ReadRequiredField(fields, "SCENARIO_TITLE");
-        string location = ReadRequiredField(fields, "LOCATION");
-        string task = ReadRequiredField(fields, "PLAYER_TASK");
-        string stake = ReadRequiredField(fields, "CIVILIAN_OR_OPERATIONAL_STAKE");
-        string complication = ReadRequiredField(fields, "COMPLICATION");
-        string commandBadIdea = ReadRequiredField(fields, "COMMAND_BAD_IDEA");
-        string toneDetail = ReadRequiredField(fields, "TONE_DETAIL");
-        string roundGoal = ReadRequiredField(fields, "ROUND_GOAL");
+        string title = ReadFieldOrDefault(fields, "SCENARIO_TITLE", "Operation Unnamed");
+        string location = ReadFieldOrDefault(fields, "LOCATION", "Undisclosed corridor");
+        string task = ReadFieldOrDefault(fields, "PLAYER_TASK", "Assess the situation");
+        string stake = ReadFieldOrDefault(fields, "CIVILIAN_OR_OPERATIONAL_STAKE", "Morale is fragile");
+        string complication = ReadFieldOrDefault(fields, "COMPLICATION", "Reports contradict each other");
+        string commandBadIdea = ReadFieldOrDefault(fields, "COMMAND_BAD_IDEA", "Command wants a fast public answer");
+        string toneDetail = ReadFieldOrDefault(fields, "TONE_DETAIL", "Everyone is pretending to be calm");
+        string roundGoal = ReadFieldOrDefault(fields, "ROUND_GOAL", "Read the sources before acting");
         SignalSourceProfile[] sources =
         {
             ParseSource(fields, 1),
@@ -1608,7 +1720,7 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
 
         if (sources.Count != 3)
         {
-            throw new GeneratedTextValidationException("Ollama did not return required field: SCENARIO_TITLE");
+            throw new GeneratedTextValidationException("Ollama did not return three complete signal sources.");
         }
 
         return new ScenarioBrief(title, location, task, stake, complication, commandBadIdea, toneDetail, roundGoal, sources.ToArray());
@@ -1687,13 +1799,20 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
     private static SignalSourceProfile ParseSource(Dictionary<string, string> fields, int index)
     {
         string prefix = "SOURCE_" + index + "_";
-        return new SignalSourceProfile(
-            ReadRequiredField(fields, prefix + "CODE"),
-            ReadRequiredField(fields, prefix + "PUBLIC"),
-            ParseClassification(ReadRequiredField(fields, prefix + "BIAS")),
-            ReadRequiredField(fields, prefix + "RELIABILITY"),
-            ReadRequiredField(fields, prefix + "TELL"),
-            ReadRequiredField(fields, prefix + "AGENDA"));
+        string codeName = ReadFieldOrDefault(fields, prefix + "CODE", "UNK-" + index);
+        string publicDesc = ReadFieldOrDefault(fields, prefix + "PUBLIC", "Unverified source");
+        string reliability = ReadFieldOrDefault(fields, prefix + "RELIABILITY", "Unknown");
+        string tell = ReadFieldOrDefault(fields, prefix + "TELL", "No tell logged");
+        string agenda = ReadFieldOrDefault(fields, prefix + "AGENDA", "Unclear agenda");
+
+        InterceptClassification bias;
+        string biasRaw = ReadFieldOrDefault(fields, prefix + "BIAS", string.Empty);
+        if (!TryParseClassification(biasRaw, out bias))
+        {
+            bias = index switch { 1 => InterceptClassification.Friendly, 2 => InterceptClassification.Enemy, _ => InterceptClassification.Deception };
+        }
+
+        return new SignalSourceProfile(codeName, publicDesc, bias, reliability, tell, agenda);
     }
 
     private static GeneratedInterceptPackage ParsePackage(string response, GeneratedReplyOption[] replyProfiles)
@@ -1749,6 +1868,100 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
             ReadOptionalField(fields, "SUPERVISOR_REMARK"));
     }
 
+    private static string ParseSingleField(string response, string prefix)
+    {
+        string[] lines = response.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i].Trim();
+            if (line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                string sameLineValue = CleanResponse(line.Substring(prefix.Length).Trim());
+                if (!string.IsNullOrWhiteSpace(sameLineValue))
+                {
+                    return sameLineValue;
+                }
+
+                if (i + 1 < lines.Length)
+                {
+                    string nextLine = lines[i + 1].Trim();
+                    if (!string.IsNullOrWhiteSpace(nextLine))
+                    {
+                        return CleanResponse(nextLine);
+                    }
+                }
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string ParseFirstMeaningfulLine(string response)
+    {
+        string[] lines = response.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (string rawLine in lines)
+        {
+            string line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (line.StartsWith("Here", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("Return", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("Write", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("Fictional", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("Example", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line.StartsWith("OPTION_", StringComparison.OrdinalIgnoreCase)) continue;
+            if (line == "---" || line == "***") continue;
+            return CleanResponse(line);
+        }
+
+        return string.Empty;
+    }
+
+    private static GeneratedReplyOption[] ParseReplies(string response, GeneratedReplyOption[] replyProfiles)
+    {
+        string[] optionTexts = new string[3];
+
+        string[] lines = response.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i].Trim();
+
+            for (int slot = 0; slot < 3; slot++)
+            {
+                string prefix = $"OPTION_{slot + 1}:";
+                if (line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string sameLineValue = CleanResponse(line.Substring(prefix.Length).Trim());
+                    if (!string.IsNullOrWhiteSpace(sameLineValue))
+                    {
+                        optionTexts[slot] = sameLineValue;
+                    }
+                    else if (i + 1 < lines.Length)
+                    {
+                        string nextLine = lines[i + 1].Trim();
+                        if (!string.IsNullOrWhiteSpace(nextLine))
+                        {
+                            optionTexts[slot] = CleanResponse(nextLine);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (optionTexts.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new GeneratedTextValidationException("Ollama did not return all three OPTION lines.");
+        }
+
+        GeneratedReplyOption[] options = new GeneratedReplyOption[3];
+        for (int j = 0; j < options.Length; j++)
+        {
+            options[j] = replyProfiles[j];
+            options[j].SetText(CleanResponse(optionTexts[j]));
+        }
+
+        return options;
+    }
+
     private static Dictionary<string, string> ReadLabelledFields(string response)
     {
         var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -1787,6 +2000,17 @@ public sealed class SignalInterceptDemoController : MonoBehaviour
         if (!fields.TryGetValue(normalizedKey, out string value) || string.IsNullOrWhiteSpace(value))
         {
             return string.Empty;
+        }
+
+        return CleanResponse(value);
+    }
+
+    private static string ReadFieldOrDefault(Dictionary<string, string> fields, string key, string fallback)
+    {
+        string normalizedKey = NormalizeLabelKey(key);
+        if (!fields.TryGetValue(normalizedKey, out string value) || string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
         }
 
         return CleanResponse(value);

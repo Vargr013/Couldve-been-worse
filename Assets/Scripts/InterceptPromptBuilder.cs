@@ -51,8 +51,11 @@ public static class InterceptPromptBuilder
                $"State: {situationSummary}. Consequences: {consequenceSummary}. Values S{corridorStability} O{objectiveStatus} C{confusion} E{commandEmbarrassment}. Round {roundNumber}/{MissionState.RoundLimit}. Risk {riskLevel}. Patience {supervisorPatience}.\n" +
                $"Source notes for context only, do not quote these labels in the transcript: {activeSource.CodeName}; {activeSource.PublicDescription}; credibility {activeSource.Reliability}; habit {activeSource.Tell}; motive {activeSource.Agenda}; last observed {activeSource.LastObservedBehavior}.\n" +
                $"Clues: {clueSummary}. Hidden intent: {DescribeHiddenTruth(hiddenTruth)}.\n" +
-               $"Write OPTION_1 as {replyOptions[0].WritingBrief}. OPTION_2 as {replyOptions[1].WritingBrief}. OPTION_3 as {replyOptions[2].WritingBrief}.\n" +
-               "Return only:\nINTERCEPT: <12-35 words, in-world radio message only; no metadata labels, no reliability/tell/agenda/source/bias wording, no friendly/enemy/hostile/deception/deceptive labels>\nOPTION_1: <under 20 words>\nOPTION_2: <under 20 words>\nOPTION_3: <under 20 words>";
+                $"Each reply must directly respond to the intercept above. OPTION_1 must be {replyOptions[0].WritingBrief}. OPTION_2 must be {replyOptions[1].WritingBrief}. OPTION_3 must be {replyOptions[2].WritingBrief}.\n" +
+                "Return exactly these lines, labels and text on the same line:\nINTERCEPT: <12-35 words, in-world radio message only; no metadata labels, no reliability/tell/agenda/source/bias wording, no friendly/enemy/hostile/deception/deceptive labels>\n" +
+                $"OPTION_1: <under 20 words, {replyOptions[0].WritingBrief}>\n" +
+                $"OPTION_2: <under 20 words, {replyOptions[1].WritingBrief}>\n" +
+                $"OPTION_3: <under 20 words, {replyOptions[2].WritingBrief}>";
     }
 
     public static string BuildInterceptAndRepliesRetryPrompt(
@@ -88,7 +91,77 @@ public static class InterceptPromptBuilder
                    objectiveStatus,
                    confusion,
                    commandEmbarrassment) + "\n\n" +
-               "Important: The previous output failed validation. Use the exact INTERCEPT / OPTION_1 / OPTION_2 / OPTION_3 format and keep every line short. The INTERCEPT must be only what was heard, not source metadata or notes.";
+                "Important: The previous output failed validation. Use the exact INTERCEPT / OPTION_1 / OPTION_2 / OPTION_3 format and keep every line short. The INTERCEPT must be only what was heard, not source metadata or notes.";
+    }
+
+    public static string BuildInterceptOnlyPrompt(
+        ScenarioBrief scenario,
+        string situationSummary,
+        string consequenceSummary,
+        string narrativeRecap,
+        InterceptClassification hiddenTruth,
+        SignalSourceProfile activeSource,
+        string clueSummary,
+        int roundNumber,
+        int riskLevel,
+        int supervisorPatience,
+        int corridorStability,
+        int objectiveStatus,
+        int confusion,
+        int commandEmbarrassment)
+    {
+        return OperationContext + "\n" +
+               $"Scenario: {scenario.Title}; {scenario.Location}; task {scenario.PlayerTask}; stake {scenario.Stake}; problem {scenario.Complication}; bad idea {scenario.CommandBadIdea}.\n" +
+               $"Round history so far: {narrativeRecap}\n" +
+               $"State: {situationSummary}. Consequences: {consequenceSummary}. Values S{corridorStability} O{objectiveStatus} C{confusion} E{commandEmbarrassment}. Round {roundNumber}/{MissionState.RoundLimit}. Risk {riskLevel}. Patience {supervisorPatience}.\n" +
+               $"Source notes for context only, do not quote these labels in the transcript: {activeSource.CodeName}; {activeSource.PublicDescription}; credibility {activeSource.Reliability}; habit {activeSource.Tell}; motive {activeSource.Agenda}; last observed {activeSource.LastObservedBehavior}.\n" +
+               $"Clues: {clueSummary}. Hidden intent: {DescribeHiddenTruth(hiddenTruth)}.\n" +
+               "Write one in-world radio transmission, 12-35 words. Keep it dry. No metadata labels, no reliability/tell/agenda/source/bias wording, no friendly/enemy/hostile/deception/deceptive labels.\n" +
+               "INTERCEPT:";
+    }
+
+    public static string BuildInterceptOnlyRetryPrompt(string previousPrompt)
+    {
+        return previousPrompt + "\n\n" +
+               "Retry: The previous output failed validation. Write one in-world radio transmission, 12-35 words.\nINTERCEPT:";
+    }
+
+    public static string BuildRepliesOnlyPrompt(
+        ScenarioBrief scenario,
+        string situationSummary,
+        string consequenceSummary,
+        string narrativeRecap,
+        string interceptText,
+        InterceptClassification hiddenTruth,
+        SignalSourceProfile activeSource,
+        string clueSummary,
+        GeneratedReplyOption[] replyOptions,
+        int roundNumber,
+        int riskLevel,
+        int supervisorPatience,
+        int corridorStability,
+        int objectiveStatus,
+        int confusion,
+        int commandEmbarrassment)
+    {
+        return OperationContext + "\n" +
+               $"Scenario: {scenario.Title}; {scenario.Location}; task {scenario.PlayerTask}; stake {scenario.Stake}; problem {scenario.Complication}; bad idea {scenario.CommandBadIdea}.\n" +
+               $"Round history so far: {narrativeRecap}\n" +
+               $"State: {situationSummary}. Consequences: {consequenceSummary}. Values S{corridorStability} O{objectiveStatus} C{confusion} E{commandEmbarrassment}. Round {roundNumber}/{MissionState.RoundLimit}. Risk {riskLevel}. Patience {supervisorPatience}.\n" +
+               $"Source: {activeSource.CodeName}; {activeSource.PublicDescription}; tell {activeSource.Tell}; agenda {activeSource.Agenda}.\n" +
+               $"Clues: {clueSummary}. Hidden intent: {DescribeHiddenTruth(hiddenTruth)}.\n" +
+               $"Intercept received: \"{interceptText}\"\n" +
+                $"Each reply must directly respond to the intercept above. OPTION_1 must be {replyOptions[0].WritingBrief}. OPTION_2 must be {replyOptions[1].WritingBrief}. OPTION_3 must be {replyOptions[2].WritingBrief}.\n" +
+                "Return exactly these lines, labels and text on the same line:\n" +
+                $"OPTION_1: <under 20 words, {replyOptions[0].WritingBrief}>\n" +
+                $"OPTION_2: <under 20 words, {replyOptions[1].WritingBrief}>\n" +
+                $"OPTION_3: <under 20 words, {replyOptions[2].WritingBrief}>";
+    }
+
+    public static string BuildRepliesOnlyRetryPrompt(string previousPrompt)
+    {
+        return previousPrompt + "\n\n" +
+               "Retry: The previous replies failed validation. Return exactly these lines, labels and text on the same line: OPTION_1 / OPTION_2 / OPTION_3. Keep every line under 20 words.";
     }
 
     public static string BuildOutcomePrompt(
