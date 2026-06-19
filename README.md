@@ -7,7 +7,7 @@ The main assessment focus is the local Large Language Model integration. Could'v
 ## Project Details
 
 - Module: Game Design 3A, GADS7331
-- Assessment: POE Part 2, LLM-Integrated Game
+- Assessment: POE Part 3, LLM-Integrated Game
 - Engine: Unity 6000.3.9f1
 - LLM runtime: Ollama
 - Default endpoint: `http://localhost:11434/api/generate`
@@ -88,7 +88,6 @@ The repository contains the prototype project, final refined Unity scenes, sourc
 
 - Prototype evidence: the live Ollama-driven Unity project in this repository.
 - Final build: Windows build packaged from `Assets/Scenes/SplashScene.unity` and `Assets/Scenes/OperationGreylineVisualScene.unity`.
-- Technical demonstration video: 3-6 minute recording showing Ollama running locally and explaining the Unity integration.
 - Final showcase video: 3-6 minute recording showing the gameplay flow, visual improvements, and design intent.
 
 ## AI Tools Used
